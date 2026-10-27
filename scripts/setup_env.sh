@@ -35,6 +35,13 @@ fi
 source .venv/bin/activate
 uv pip install --upgrade pip
 
+# Isaac Lab's installer invokes sudo apt-get when cmake is absent.  Shared
+# servers commonly deny sudo, so provide a repository-local cmake wheel first.
+# gcc, g++ and make remain host prerequisites and are checked by Isaac Lab.
+if ! command -v cmake >/dev/null 2>&1; then
+  uv pip install "cmake>=3.22,<4"
+fi
+
 uv pip install "isaacsim[all,extscache]==6.0.1.0" \
   --extra-index-url https://pypi.nvidia.com --index-strategy unsafe-best-match --prerelease=allow
 uv pip install -U torch==2.10.0 torchvision==0.25.0 --index-url "$TORCH_INDEX"

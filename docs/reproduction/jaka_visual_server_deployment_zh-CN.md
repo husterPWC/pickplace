@@ -115,6 +115,8 @@ PICKPLACE_PHYSICAL_GPU=7 \
 ```
 
 这里的 `7` 是宿主机 `nvidia-smi` 中的物理编号。下一次运行可以根据负载换成其他编号。
+服务器脚本在正式 headless 采集时会仅在其子进程内移除 SSH/X11 转发的
+`DISPLAY`，避免远程 GLX 与所选计算卡不匹配；不会修改调用者的 shell。
 
 ## 4. 权重传输
 

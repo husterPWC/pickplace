@@ -86,12 +86,6 @@ export OMNI_KIT_ACCEPT_EULA=YES
 export PYTHONFAULTHANDLER=1
 export PYTHONUNBUFFERED=1
 
-if [[ "$(hostname)" != "robot" && -z "${PICKPLACE_PHYSICAL_GPU:-}" && -z "${NVIDIA_VISIBLE_DEVICES:-}" ]]; then
-  echo "set PICKPLACE_PHYSICAL_GPU to a currently free physical GPU for bare-metal collection" >&2
-  echo "(inside a GPU-isolated Docker container, NVIDIA_VISIBLE_DEVICES is sufficient)" >&2
-  exit 2
-fi
-
 COMMAND=(
   "$PYTHON_BIN" -X faulthandler pipeline/1_collect_data/collect.py
   "checkpoint=$ACTOR_CHECKPOINT"
@@ -121,6 +115,21 @@ if [[ "${JAKA_VISUAL_DRY_RUN:-0}" == "1" ]]; then
   printf '%q ' "${COMMAND[@]}"
   printf '\n'
   exit 0
+fi
+
+if [[ "$(hostname)" != "robot" && -z "${PICKPLACE_PHYSICAL_GPU:-}" && -z "${NVIDIA_VISIBLE_DEVICES:-}" ]]; then
+  echo "set PICKPLACE_PHYSICAL_GPU to a currently free physical GPU for bare-metal collection" >&2
+  echo "(inside a GPU-isolated Docker container, NVIDIA_VISIBLE_DEVICES is sufficient)" >&2
+  exit 2
+fi
+
+# Remote shells often export an SSH/X11-forwarded DISPLAY (for example
+# localhost:11.0).  Headless RTX cameras must not attempt to create a GLX
+# context through that display.  This affects only this script process; set
+# PICKPLACE_KEEP_DISPLAY=1 explicitly for an intentional local GUI launch.
+if [[ -n "${DISPLAY:-}" && "${PICKPLACE_KEEP_DISPLAY:-0}" != "1" ]]; then
+  echo "ignoring DISPLAY=$DISPLAY for headless RGB-D collection"
+  unset DISPLAY
 fi
 
 "${COMMAND[@]}"
