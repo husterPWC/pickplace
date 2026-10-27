@@ -1,0 +1,52 @@
+# JAKA J0-S0: ZU5+AG95 state teacher, independently trained from Franka.
+#
+# The validated geometric interceptor remains the nominal controller and PPO
+# learns only millimetre-scale Cartesian residuals.  Conveyor speed is domain
+# randomization only: neither actor nor critic observes object/belt velocity,
+# contact, force, tactile sensing, motor current, or torque.
+defaults:
+  - config_moving_sphere_g0_s0e_residual_baseline
+  - _self_
+
+env:
+  arm: zu5_ag95
+  belt:
+    speed: 0.02
+    speed_noise: 0.50       # uniform 0.01--0.03 m/s
+    place_window: 20.0      # same 0.40 m physical interception corridor
+    pallet_start_range: [0.0, 0.0]
+    bowl_offset_x: [0.0, 0.0]
+    bowl_offset_y: [0.0, 0.0]
+  robot_reset:
+    position_range: [-0.002, 0.002]
+    velocity_range: [0.0, 0.0]
+  stable_sphere_residual_skill:
+    # AG95 opens at q=0 and closes toward q=0.943.  In the normalized action
+    # convention -0.43 maps to q~=0.674 and was physically validated with the
+    # sphere; this must not inherit Franka's -0.15 closing target.
+    close_action: -0.43
+
+network:
+  # Start exactly at the 20/20-validated geometric controller.  A merely
+  # "small" random output layer creates a persistent directional bias over
+  # hundreds of JAKA control steps and eventually triggers tcp_escape.
+  actor_out_gain: 0.0
+  # exp(-3.5) ~= 0.03 raw residual std: about 0.06 mm Cartesian exploration
+  # per step after the residual limit, three times smaller than the failed
+  # first probe and appropriate for the persistent industrial-arm servo.
+  log_std_init: -3.5
+
+collector:
+  total_frames: 2_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+loss:
+  action_l1_coeff: 0.02
+
+worker:
+  enabled: false
+
+run:
+  name: jaka_zu5_ag95_sphere_j0_s0_residual_001_003_1024_no_rtx

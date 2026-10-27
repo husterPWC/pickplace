@@ -1,0 +1,75 @@
+# C0x: corrected close-to-lift bridge.  The strict C0w success contract stays
+# unchanged, but dense lift shaping is gated by stable closure and geometric
+# coupling.  Reference KL protects every action except allowing z to adapt.
+defaults:
+  - config_moving_cube_c0t_gap_direct_rl
+  - _self_
+
+env:
+  belt:
+    speed: 0.06
+    speed_noise: 0.25
+  reward_set: moving_cube_bridge_v1
+  target_lift: 0.005
+  geometric_slip_penalty: 0.0
+  geometric_close_curriculum:
+    success_steps: 0
+    distance_threshold: 0.045
+    min_close_fraction: 0.15
+    max_close_fraction: 0.90
+    far_close_penalty: 0.50
+  geometric_close_lift_bridge:
+    enabled: true
+    progress_reward: true
+    close_steps: 5
+    distance_threshold: 0.045
+    min_close_fraction: 0.15
+    max_close_fraction: 0.90
+    prelift_max_height: 0.003
+    target_lift: 0.005
+    max_relative_drift: 0.008
+    success_steps: 5
+    tcp_progress_weight: 0.25
+    object_progress_weight: 1.0
+
+init_checkpoint: null
+init_actor_scale: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 6_000_000
+
+optim:
+  lr: 5.0e-5
+  anneal_lr: true
+
+loss:
+  ppo_epochs: 2
+  clip_epsilon: 0.05
+  entropy_coeff: 0.0
+  reference_checkpoint: ${init_checkpoint}
+  reference_kl_coeff: 0.25
+  reference_mean_kl_coeff: 1.0
+  # Action order: dx, dy, dz, rx, ry, rz, gripper.  Preserve C0u everywhere
+  # except dz, whose old post-close deterministic mean was strongly downward.
+  reference_action_weights: [1.0, 1.0, 0.02, 1.0, 1.0, 1.0, 1.0]
+  freeze_actor_scale: true
+  freeze_actor_base: false
+  train_actor_head_only: false
+
+checkpoint:
+  interval_frames: 1_000_000
+
+early_stop:
+  success_rate: null
+  consecutive_evals: 1
+
+worker:
+  enabled: false
+
+logger:
+  backend: null
+  exp_name: moving_cube_c0x_gated_micro_lift
+
+run:
+  name: moving_cube_c0x_gated_micro_lift_probe6m_4096_no_rtx

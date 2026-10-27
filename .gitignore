@@ -1,6 +1,10 @@
 # environments / third party
 .venv/
 third_party/
+.cache/
+artifacts/
+datasets/
+weights/
 # python
 __pycache__/
 *.egg-info/

@@ -1,0 +1,46 @@
+# C0i probe: conservative two-stage hold-then-lift refinement from C0a.
+# C0h used a 6-step gate, but failed C0a episodes hold for a median of only
+# 5 steps.  This probe exposes a useful transition at step 5, requires those
+# steps to occur within 2 cm of the belt, and latches lift readiness afterward.
+defaults:
+  - config_moving_cube_c0_lift
+  - _self_
+
+env:
+  target_lift: 0.03
+  grasp_stability:
+    hold_steps: 5                  # 0.10 s at the 50 Hz control rate
+    hold_reward: 3.0
+    slip_penalty: 2.0              # immediate but less avoidance-inducing than C0h's -10
+    prelift_max_height: 0.02       # validated baseline: retains 56.93% under the stricter success rule
+    premature_lift_penalty: 0.25   # applied inside the outer grasp_lift weight
+    require_stable_success: true   # terminal +250 cannot bypass the staged curriculum
+  reward_weights:
+    grasp: 1.0
+
+# Preserve C0a's learned exploration scale. Only its deterministic mean head
+# may adapt, preventing another whole-network drift like C0h.
+init_actor_scale: null
+
+collector:
+  total_frames: 5_000_000
+
+optim:
+  lr: 2.0e-6
+
+loss:
+  ppo_epochs: 1
+  clip_epsilon: 0.05
+  entropy_coeff: 0.0
+  freeze_actor_scale: true
+  train_actor_head_only: true
+
+checkpoint:
+  interval_frames: 1_000_000
+
+early_stop:
+  success_rate: 0.78
+  consecutive_evals: 2
+
+logger:
+  exp_name: moving_cube_c0i_hold5_prelift2cm_probe

@@ -1,0 +1,44 @@
+# JAKA J0-S2: fixed 0.08 m/s boundary adaptation from the accepted J0-S1
+# policy.  The actor remains speed/contact/force free.  Geometry-history
+# feed-forward synchronizes ALIGN/CLOSE, then decays after closure so the ZU5
+# does not integrate a single noisy displacement throughout the lift.
+defaults:
+  - config_jaka_sphere_j0_s1_residual_003_005
+  - _self_
+
+env:
+  belt:
+    speed: 0.08
+    speed_noise: 0.0
+    place_window: 5.0
+  stable_sphere_residual_skill:
+    intercept_lead_distance: 0.16
+    intercept_align_lead_distance: 0.06
+    pre_descent_height: 0.02
+    align_target_xy_feedforward: true
+    close_requires_raw_alignment: true
+    target_xy_feedforward_gain: 1.0
+    max_target_xy_feedforward_step: 0.002
+    max_close_hold_xy_step: 0.008
+    lift_height: 0.05
+    lift_steps: 60
+    lift_timeout_steps: 300
+    lift_xy_gain: 0.01
+    max_lift_xy_step: 0.002
+    preserve_lift_relative_xy: true
+    latch_lift_xy_feedforward: true
+    lift_feedforward_x_only: true
+    lift_feedforward_decay_steps: 20
+    lift_geometry_relatch_height: 0.012
+    settled_coupling_reference: true
+
+# Match the successful Franka high-speed boundary adaptation: short run,
+# multiple candidates, and select only by independent deterministic tests.
+collector:
+  total_frames: 1_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: jaka_zu5_ag95_sphere_j0_s2_speed008_1024_no_rtx

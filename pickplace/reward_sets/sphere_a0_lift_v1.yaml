@@ -1,0 +1,9 @@
+# A0 minimal-overfit gate.  Hidden contact labels shape physical grasp/lift,
+# while the actor receives only pose geometry and proprioception.
+reach_food: 8.0
+grasp: 10.0
+grasp_lift: 40.0
+success: 150.0
+food_dropped: -50.0
+action_rate: -0.001
+joint_vel: -0.0001

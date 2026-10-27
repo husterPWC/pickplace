@@ -8,6 +8,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 export OMNI_KIT_ACCEPT_EULA=YES
 
+# Keep dependency downloads and runtime artifacts inside this checkout.  This
+# makes the environment self-contained on shared machines and avoids silently
+# filling the user's home directory.
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$ROOT/.cache}"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$ROOT/.cache/uv}"
+export PIP_CACHE_DIR="${PIP_CACHE_DIR:-$ROOT/.cache/pip}"
+export HF_HOME="${HF_HOME:-$ROOT/.cache/huggingface}"
+export FOOD_ROBOT_ARTIFACTS="${FOOD_ROBOT_ARTIFACTS:-$ROOT/artifacts}"
+export FOOD_ROBOT_CACHE="${FOOD_ROBOT_CACHE:-$ROOT/.cache/food_robot}"
+mkdir -p "$UV_CACHE_DIR" "$PIP_CACHE_DIR" "$HF_HOME" \
+  "$FOOD_ROBOT_ARTIFACTS" "$FOOD_ROBOT_CACHE"
+
 ARCH="$(uname -m)"
 if [[ "$ARCH" == "x86_64" ]]; then
   TORCH_INDEX="https://download.pytorch.org/whl/cu128"

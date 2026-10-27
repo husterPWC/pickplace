@@ -1,0 +1,47 @@
+# C0o: conservative positive-only early-slip signal from C0m best.
+#
+# Spatial lift coupling remains unchanged at perfect velocity matching.  As the
+# cube begins moving relative to the TCP, up to half of the dense lift reward
+# fades smoothly.  There is no new negative reward, action gate, contact flag,
+# force, tactile, torque, or motor-current input.
+defaults:
+  - config_moving_cube_c0m_temporal
+  - _self_
+
+env:
+  geometric_lift_velocity:
+    weight: 0.5
+    std: 0.05
+
+init_checkpoint: null
+init_actor_scale: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 3_000_000
+
+optim:
+  lr: 2.0e-6
+
+loss:
+  ppo_epochs: 1
+  clip_epsilon: 0.05
+  entropy_coeff: 0.0
+  reference_checkpoint: ${init_checkpoint}
+  reference_kl_coeff: 0.5
+  reference_mean_kl_coeff: 2.0
+  freeze_actor_scale: true
+  freeze_actor_base: true
+
+checkpoint:
+  interval_frames: 1_000_000
+
+worker:
+  enabled: false
+
+early_stop:
+  success_rate: null
+  consecutive_evals: 1
+
+logger:
+  exp_name: moving_cube_c0o_velocity_coupling

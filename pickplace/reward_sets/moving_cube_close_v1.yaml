@@ -1,0 +1,7 @@
+# Stage-one curriculum: intercept, align, and close around the moving cube.
+# No lift/transport term is active yet; success is geometric sustained close.
+reach_food: 2.0
+grasp: 12.0
+success: 100.0
+action_rate: -0.005
+joint_vel: -0.0005

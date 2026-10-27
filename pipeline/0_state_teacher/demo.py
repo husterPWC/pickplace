@@ -55,6 +55,8 @@ IMAGE = int(cli.get("image", 128))
 SEED = int(cli.get("seed", 0))
 VIDEO = bool(cli.get("video", True))   # video=false: counts only, no rendering (much faster)
 OUT = Path(cli.get("out") or CHECKPOINT.with_name(f"{CHECKPOINT.stem}_demo{'_home' if HOME_BETWEEN else ''}.mp4"))
+TRACE = None if cli.get("trace") is None else Path(str(cli.trace))
+TRACE_STRIDE = max(1, int(cli.get("trace_stride", 2)))
 TAIL_SECONDS = 1.0  # video kept running after the last bowl of a finite (total_bowls) run was resolved
 
 from pickplace.system import memory_used_gb  # noqa: E402
@@ -63,7 +65,9 @@ baseline_gb = memory_used_gb()
 
 from pickplace.app import launch_app  # noqa: E402
 
-app = launch_app(headless=True, enable_cameras=True)
+# With an explicit state teacher and video=false, no RTX product is needed.  Keeping the auto/student path
+# camera-capable preserves the existing student auto-detection behaviour.
+app = launch_app(headless=True, enable_cameras=VIDEO or str(cli.get("kind", "")) != "teacher")
 
 import cv2  # noqa: E402
 import imageio.v2 as imageio  # noqa: E402
@@ -442,6 +446,47 @@ gripper = torch.ones(1, device=env.device)  # open
 episode_ends = robot_resets = 0
 n = tail = 0
 last_length = int(u.episode_length_buf[0])
+trace = {
+    "time": [], "body_pos": [], "body_quat": [], "food_pos": [], "food_quat": [],
+    "bowl_pos": [], "bowl_quat": [], "tcp_pos": [], "tcp_home_distance": [], "active_food": [],
+    "target_bowl": [], "placed": [],
+}
+
+
+def _tensor(value):
+    """Isaac Lab 2/3 compatibility: tensors are plain in some builds and wrapped in others."""
+    return value.torch if hasattr(value, "torch") else value
+
+
+def record_trace() -> None:
+    if TRACE is None:
+        return
+    robot = u.scene["robot"]
+    trace["time"].append(n * dt)
+    trace["body_pos"].append(_tensor(robot.data.body_pos_w)[0].detach().cpu().numpy().copy())
+    trace["body_quat"].append(_tensor(robot.data.body_quat_w)[0].detach().cpu().numpy().copy())
+    food_pose = []
+    food_quat = []
+    for name in line.foods:
+        food_pose.append(_tensor(u.scene[name].data.root_pos_w)[0].detach().cpu().numpy().copy())
+        food_quat.append(_tensor(u.scene[name].data.root_quat_w)[0].detach().cpu().numpy().copy())
+    trace["food_pos"].append(np.asarray(food_pose))
+    trace["food_quat"].append(np.asarray(food_quat))
+    bowl_pose = []
+    bowl_quat = []
+    for name in line.bowls:
+        bowl_pose.append(_tensor(u.scene[name].data.root_pos_w)[0].detach().cpu().numpy().copy())
+        bowl_quat.append(_tensor(u.scene[name].data.root_quat_w)[0].detach().cpu().numpy().copy())
+    trace["bowl_pos"].append(np.asarray(bowl_pose))
+    trace["bowl_quat"].append(np.asarray(bowl_quat))
+    tcp = _tensor(u.scene["ee_frame"].data.target_pos_w)[0, 0].detach().cpu()
+    local_tcp = tcp - u.scene.env_origins[0].detach().cpu()
+    home = torch.as_tensor(u.cfg.arm.home_tcp_pos)
+    trace["tcp_pos"].append(tcp.numpy().copy())
+    trace["tcp_home_distance"].append(float(torch.linalg.vector_norm(local_tcp - home)))
+    trace["active_food"].append("" if line.active is None else line.active)
+    trace["target_bowl"].append(-1 if line.target is None else line.target)
+    trace["placed"].append(line.tally.placed)
 
 class _NoWriter:
     def append_data(self, frame):
@@ -479,6 +524,8 @@ with _writer_ctx as writer, \
         line.t = n * dt
         if line.update() and HOME_BETWEEN:
             homing.begin()
+        if n % TRACE_STRIDE == 0:
+            record_trace()
         if line.tally.placed > placed_before and first_place_step is None:
             first_place_step = n
             still_step = n + round(0.5 / dt)
@@ -524,6 +571,19 @@ summary = {
     },
 }
 OUT.with_suffix(".json").write_text(json.dumps(summary, indent=2) + "\n")
+if TRACE is not None:
+    TRACE.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        TRACE,
+        **{key: np.asarray(value) for key, value in trace.items()},
+        body_names=np.asarray(u.scene["robot"].body_names),
+        food_names=np.asarray(line.foods),
+        bowl_names=np.asarray(line.bowls),
+        home_tcp_pos=np.asarray(u.cfg.arm.home_tcp_pos),
+        dt=np.asarray(dt * TRACE_STRIDE),
+        events=np.asarray(json.dumps(line.events)),
+    )
+    print(f"TRACE_DONE {TRACE} frames={len(trace['time'])}", flush=True)
 print("DEMO " + json.dumps(summary), flush=True)
 print("MEMORY " + json.dumps({"used_gb": round(memory_used_gb(), 2), "delta_gb": round(memory_used_gb() - baseline_gb, 2)}), flush=True)
 print("DEMO_DONE", flush=True)

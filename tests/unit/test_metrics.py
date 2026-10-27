@@ -1,10 +1,31 @@
 import torch
 
-from pickplace.metrics import OUTCOME_TERMS, outcome_rates
+from pickplace.metrics import (
+    MOVING_CUBE_OUTCOME_TERMS,
+    MOVING_SPHERE_RESIDUAL_OUTCOME_TERMS,
+    OUTCOME_TERMS,
+    outcome_rates,
+    outcome_terms,
+)
 
 
 def test_outcome_terms_cover_all_terminations():
     assert set(OUTCOME_TERMS) == {"success", "bowl_exited_zone", "bowl_off_belt", "bowl_tipped", "food_off_table", "time_out"}
+
+
+def test_moving_cube_has_independent_outcomes_without_changing_legacy_default():
+    assert outcome_terms("FoodRobot-Cell-v0") == OUTCOME_TERMS
+    assert outcome_terms("FoodRobot-MovingCubeStaticBowl-v0") == MOVING_CUBE_OUTCOME_TERMS
+    assert outcome_terms("FoodRobot-MovingCubeLift-v0") == MOVING_CUBE_OUTCOME_TERMS
+    assert outcome_terms("FoodRobot-MovingSphereStaticBowl-v0") == MOVING_CUBE_OUTCOME_TERMS
+    assert outcome_terms("FoodRobot-MovingSphereLift-v0") == MOVING_CUBE_OUTCOME_TERMS
+    assert outcome_terms("FoodRobot-MovingSphereA0Lift-v0") == MOVING_CUBE_OUTCOME_TERMS
+    assert outcome_terms("FoodRobot-MovingSphereCanonicalGapLift-v0") == MOVING_CUBE_OUTCOME_TERMS
+    assert outcome_terms("FoodRobot-MovingSphereResidualGapLift-v0") == MOVING_SPHERE_RESIDUAL_OUTCOME_TERMS
+    assert set(MOVING_CUBE_OUTCOME_TERMS) == {"success", "cube_exited_zone", "cube_off_belt", "time_out"}
+    assert set(MOVING_SPHERE_RESIDUAL_OUTCOME_TERMS) == {
+        "success", "cube_exited_zone", "cube_off_belt", "tcp_escape", "time_out"
+    }
 
 
 def test_rates_are_fractions_of_finished_episodes():

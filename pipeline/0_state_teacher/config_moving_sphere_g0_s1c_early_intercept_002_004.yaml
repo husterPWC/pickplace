@@ -1,0 +1,45 @@
+# G0-S1c: preserve G0-S1b's overlapping 0.02--0.04 m/s curriculum but fix
+# the geometric interception timing.  The TCP starts a position-scheduled
+# descent 16 cm before the interception line and reaches 2 cm clearance at
+# the 4 cm final-alignment line.  No explicit speed/force/contact signal is
+# added, and strict close/lift gates are unchanged.
+defaults:
+  - config_moving_sphere_g0_s1b_speed_002_004
+  - _self_
+
+env:
+  # Calibrated top-down conveyor standby pose.  At 0.05 m/s the generic
+  # Franka Home leaves a 0.795 rad wrist error and cannot settle before the
+  # sphere reaches the interception line.  Historical stages keep Home.
+  robot_initial_joint_pos:
+    panda_joint1: -1.55131948
+    panda_joint2: -0.25804791
+    panda_joint3: 2.25832868
+    panda_joint4: -2.45404768
+    panda_joint5: 0.38310212
+    panda_joint6: 2.59809756
+    panda_joint7: 1.02313423
+  stable_sphere_residual_skill:
+    intercept_lead_distance: 0.16
+    intercept_align_lead_distance: 0.04
+    pre_descent_height: 0.02
+    # Keep the strict true 3 cm success threshold.  The 4 cm TCP command left
+    # the coupled sphere at 28.9 mm because of grasp compliance, so command
+    # 5 cm rather than weakening the acceptance criterion.
+    lift_height: 0.05
+    lift_steps: 60
+    # No vertical clamp: the slow trajectory reaches >3 cm.  Stability is
+    # recovered by damping XY tracking, which was the measured drift source.
+    lift_target_slack: null
+    lift_xy_gain: 0.5
+    max_lift_xy_step: 0.002
+    # Preserve the stable sphere-to-TCP offset measured after closure;
+    # chasing zero centre error during lift was pushing the held sphere out.
+    preserve_lift_relative_xy: true
+    # Keep the strict 8 mm drift threshold, but start it from the geometry at
+    # the end of the required stable hold rather than the transient first
+    # finger touch.  Historical stages retain their original reference.
+    settled_coupling_reference: true
+
+run:
+  name: moving_sphere_g0_s1c_early_intercept_002_004_1024_no_rtx

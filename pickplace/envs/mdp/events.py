@@ -73,6 +73,70 @@ class reset_belt(ManagerTermBase):
         self.bowl.write_root_velocity_to_sim_index(root_velocity=velocity, env_ids=env_ids)
 
 
+class reset_food_on_belt(ManagerTermBase):
+    """Reset a pallet and a rigid object so the object starts moving with the conveyor.
+
+    The object remains a free rigid body. The initial velocity avoids an artificial
+    stationary-to-moving impulse; after reset, contact and friction with the driven
+    pallet determine its motion.
+    """
+
+    def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        self.pallet = env.scene[cfg.params["pallet_cfg"].name]
+        self.food = env.scene[cfg.params["food_cfg"].name]
+        self.joint_ids, _ = self.pallet.find_joints("slider")
+        self.speed = torch.zeros(env.num_envs, device=env.device)
+        self.start = torch.zeros(env.num_envs, device=env.device)
+        self.offset = torch.zeros(env.num_envs, 2, device=env.device)
+
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        env_ids: torch.Tensor,
+        speed: float,
+        speed_noise: float,
+        pallet_start_range: tuple[float, float],
+        food_offset_x: tuple[float, float],
+        food_offset_y: tuple[float, float],
+        entry_x: float,
+        belt_y: float,
+        plate_top_z: float,
+        item_half_height: float,
+        pallet_cfg: SceneEntityCfg = SceneEntityCfg("pallet"),
+        food_cfg: SceneEntityCfg = SceneEntityCfg("food"),
+    ):
+        n, device = len(env_ids), env.device
+        v = speed * (1.0 + math_utils.sample_uniform(-speed_noise, speed_noise, (n,), device))
+        start = math_utils.sample_uniform(*pallet_start_range, (n,), device)
+        ox = math_utils.sample_uniform(*food_offset_x, (n,), device)
+        oy = math_utils.sample_uniform(*food_offset_y, (n,), device)
+        self.speed[env_ids] = v
+        self.start[env_ids] = start
+        self.offset[env_ids, 0] = ox
+        self.offset[env_ids, 1] = oy
+
+        joint_v = v.unsqueeze(-1)
+        self.pallet.write_joint_position_to_sim_index(
+            position=start.unsqueeze(-1), joint_ids=self.joint_ids, env_ids=env_ids
+        )
+        self.pallet.write_joint_velocity_to_sim_index(
+            velocity=joint_v, joint_ids=self.joint_ids, env_ids=env_ids
+        )
+        self.pallet.set_joint_velocity_target_index(target=joint_v, joint_ids=self.joint_ids, env_ids=env_ids)
+
+        origins = env.scene.env_origins[env_ids]
+        pose = torch.zeros(n, 7, device=device)
+        pose[:, 0] = origins[:, 0] + entry_x + start + ox
+        pose[:, 1] = origins[:, 1] + belt_y + oy
+        pose[:, 2] = origins[:, 2] + plate_top_z + item_half_height + 0.002
+        pose[:, 6] = 1.0
+        self.food.write_root_pose_to_sim_index(root_pose=pose, env_ids=env_ids)
+        velocity = torch.zeros(n, 6, device=device)
+        velocity[:, 0] = v
+        self.food.write_root_velocity_to_sim_index(root_velocity=velocity, env_ids=env_ids)
+
+
 class reset_ingredient_bowl(ManagerTermBase):
     """Place the kinematic ingredient (supply) bowl at a random position on the table.
 

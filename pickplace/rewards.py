@@ -34,6 +34,38 @@ EVENT_SOURCES: dict[str, tuple[str, ...]] = {
     "food_dropped": ("food_off_table",),
 }
 
+MOVING_CUBE_EVENT_SOURCES: dict[str, tuple[str, ...]] = {
+    "success": ("success",),
+    # The destination bowl is kinematic in this task, so it has no failure outcome.
+    "bowl_failure": (),
+    "food_dropped": ("cube_off_belt",),
+}
+
+MOVING_SPHERE_RESIDUAL_EVENT_SOURCES: dict[str, tuple[str, ...]] = {
+    "success": ("success",),
+    "bowl_failure": (),
+    # Cartesian escape/retreat is an explicit failed attempt and receives the
+    # same one-shot failure weight as losing the object from the belt.
+    "food_dropped": ("cube_off_belt", "tcp_escape"),
+}
+
+
+def event_sources(task: str) -> dict[str, tuple[str, ...]]:
+    """Map the shared reward-vector event columns onto task-specific outcomes."""
+    if task == "FoodRobot-MovingSphereResidualGapLift-v0":
+        return MOVING_SPHERE_RESIDUAL_EVENT_SOURCES
+    if task in (
+        "FoodRobot-MovingCubeStaticBowl-v0",
+        "FoodRobot-MovingCubeLift-v0",
+        "FoodRobot-MovingSphereStaticBowl-v0",
+        "FoodRobot-MovingSphereLift-v0",
+        "FoodRobot-MovingSphereGapLift-v0",
+        "FoodRobot-MovingSphereCanonicalGapLift-v0",
+        "FoodRobot-MovingSphereA0Lift-v0",
+    ):
+        return MOVING_CUBE_EVENT_SOURCES
+    return EVENT_SOURCES
+
 REWARD_SETS_DIR = Path(__file__).parent / "reward_sets"
 DEFAULT_REWARD_SET = "simple_v3b"
 

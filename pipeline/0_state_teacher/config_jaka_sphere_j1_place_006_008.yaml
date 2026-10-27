@@ -1,0 +1,53 @@
+# JAKA J1: keep the accepted J0-S3b intercept/grasp/lift skill frozen as the
+# motion backbone, then add deterministic clear/transport/lower/release into a
+# nearby static bowl.  PPO remains only a tightly bounded approach residual.
+defaults:
+  - config_jaka_sphere_j0_s3b_speed_006_008
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereStaticBowl-v0
+  reward_set: moving_sphere_v1
+  success_requires_home: false
+  destination_bowl_pos: [0.45, 0.00, 0.0]
+  destination_bowl_x_range: [0.44, 0.46]
+  destination_bowl_y_range: [-0.01, 0.01]
+  belt:
+    episode_completion_margin: 14.0
+  stable_sphere_residual_skill:
+    translation_residual_limit: 0.05
+    rotation_residual_limit: 0.025
+  stable_sphere_pick_place_skill:
+    enabled: true
+    clear_height: 0.20
+    bowl_hover_height: 0.20
+    release_height: 0.11
+    position_gain: 4.0
+    max_position_step: 0.016
+    max_translation_action_delta: 0.04
+    max_lower_xy_step: 0.002
+    position_deadband: 0.001
+    clear_tolerance: 0.012
+    hover_tolerance: 0.018
+    release_tolerance: 0.012
+    stable_steps: 3
+    release_steps: 28
+    close_action: -0.43
+    open_action: 1.0
+
+collector:
+  total_frames: 1_000_000
+
+loss:
+  entropy_coeff: 0.0
+  freeze_actor_scale: true
+  action_l1_coeff: 0.005
+
+checkpoint:
+  interval_frames: 250_000
+
+worker:
+  enabled: false
+
+run:
+  name: jaka_zu5_ag95_sphere_j1_place_006_008_1024_no_rtx

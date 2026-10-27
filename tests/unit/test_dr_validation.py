@@ -24,6 +24,17 @@ def test_supply_range_touching_belt_raises():
         validate_supply_bowl_range((0.35, 0.55), (-0.20, 0.10), BOWL_R, reach_radius=0.80, belt_y=0.30, belt_half_width=0.15)
 
 
+def test_supply_range_above_belt_is_valid():
+    validate_supply_bowl_range(
+        (0.30, 0.30),
+        (0.59, 0.59),
+        0.116,
+        reach_radius=0.80,
+        belt_y=0.30,
+        belt_half_width=0.15,
+    )
+
+
 def test_inverted_supply_range_raises():
     with pytest.raises(ValueError, match="min"):
         validate_supply_bowl_range((0.55, 0.35), (-0.20, 0.00), BOWL_R, reach_radius=0.80, belt_y=0.30, belt_half_width=0.15)

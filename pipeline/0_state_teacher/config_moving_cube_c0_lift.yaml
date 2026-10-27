@@ -1,0 +1,52 @@
+# Recovery stage C0a: retain C1's reach/grasp mean policy and first learn a
+# discoverable 3 cm lift from a strong continuous held-height reward.
+defaults:
+  - config
+  - _self_
+
+env:
+  task: FoodRobot-MovingCubeLift-v0
+  arm: franka
+  food: cube
+  action_mode: ee_delta_pose
+  cameras: false
+  privileged_information: true
+  belt:
+    speed: 0.04
+    speed_noise: 0.0
+    place_window: 10.0
+    pallet_start_range: [-0.04, 0.04]
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.02, 0.02]
+  destination_bowl_pos: [0.45, -0.10, 0.0]
+  destination_bowl_x_range: [0.45, 0.45]
+  destination_bowl_y_range: [-0.10, -0.10]
+  reward_set: moving_cube_lift_v1
+  target_lift: 0.03
+  success_requires_home: false
+  robot_reset:
+    position_range: [-0.02, 0.02]
+    velocity_range: [0.0, 0.0]
+
+init_checkpoint: null
+# Action order: dx, dy, dz, rx, ry, rz, gripper.  Preserve C1's exploration
+# except for dz, where a larger std makes upward motion discoverable without
+# destroying the learned horizontal alignment, orientation, or grip.
+init_actor_scale: [-1.91, -1.25, -0.30, -0.84, -0.84, -0.72, -0.73]
+resume_checkpoint: null
+
+collector:
+  total_frames: 200_000_000
+
+optim:
+  lr: 1.0e-4
+
+checkpoint:
+  interval_frames: 5_000_000
+
+early_stop:
+  success_rate: 0.95
+  consecutive_evals: 3
+
+logger:
+  exp_name: moving_cube_c0a_lift3cm

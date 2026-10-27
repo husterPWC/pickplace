@@ -1,0 +1,47 @@
+# Moving-cube curriculum stage C2: warm-start C1, approach target speed and
+# expose the policy to the full cube reset range. Placement remains the success
+# boundary so the interception skill is consolidated before adding Home.
+defaults:
+  - config
+  - _self_
+
+env:
+  task: FoodRobot-MovingCubeStaticBowl-v0
+  arm: franka
+  food: cube
+  action_mode: ee_delta_pose
+  cameras: false
+  privileged_information: true
+  belt:
+    speed: 0.08
+    speed_noise: 0.03
+    place_window: 5.0       # 0.40 m reach zone
+    pallet_start_range: [-0.08, 0.08]
+    bowl_offset_x: [-0.02, 0.02]
+    bowl_offset_y: [-0.04, 0.04]
+  destination_bowl_pos: [0.45, -0.10, 0.0]
+  destination_bowl_x_range: [0.45, 0.45]
+  destination_bowl_y_range: [-0.10, -0.10]
+  reward_set: moving_cube_v1
+  reward_weights:
+    return_home: 0.0
+  success_requires_home: false
+  robot_reset:
+    position_range: [-0.02, 0.02]
+    velocity_range: [0.0, 0.0]
+
+init_checkpoint: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 300_000_000
+
+optim:
+  lr: 1.0e-4
+
+early_stop:
+  success_rate: 0.97
+  consecutive_evals: 4
+
+logger:
+  exp_name: moving_cube_c2

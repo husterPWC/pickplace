@@ -1,0 +1,10 @@
+# Moving sphere -> static bowl, full-task reward contract.
+reach_food: 1.0
+grasp: 2.0
+grasp_lift: 5.0
+transport: 10.0
+food_in_bowl: 20.0
+return_home: 10.0
+success: 150.0
+action_rate: -0.01
+joint_vel: -0.001

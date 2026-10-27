@@ -1,0 +1,43 @@
+# Sphere S0: from-scratch, speed-free interception + physically coupled 3 cm lift.
+# Belt speed is domain randomization only and is absent from actor and critic.
+defaults:
+  - config_moving_cube_c0t_gap_direct_rl
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereLift-v0
+  food: moving_sphere
+  reward_set: moving_sphere_lift_v1
+  target_lift: 0.03
+  belt:
+    speed: 0.06
+    speed_noise: 0.25       # 0.045--0.075 m/s
+    place_window: 6.6666667 # 0.40 m reach zone
+    pallet_start_range: [-0.04, 0.04]
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.02, 0.02]
+  # Do not repeat C0u's false-positive aperture-only termination.
+  geometric_close_curriculum:
+    success_steps: 0
+  geometric_close_lift_bridge:
+    enabled: false
+
+init_checkpoint: null
+init_actor_scale: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 30_000_000
+
+optim:
+  lr: 3.0e-4
+  anneal_lr: true
+
+checkpoint:
+  interval_frames: 2_000_000
+
+logger:
+  exp_name: moving_sphere_s0_lift
+
+run:
+  name: moving_sphere_s0_lift_4096_no_rtx

@@ -1,0 +1,146 @@
+# JAKA M0: static sphere in an off-belt shallow supply bowl -> destination
+# bowl moving at 0.10 m/s -> release, settle, retreat, and return Home.
+#
+# The actor receives no belt/object speed, contact, force, tactile, current, or
+# torque.  It starts at exactly zero and may learn only a tightly bounded
+# approach residual around the MuJoCo-validated geometric backbone.
+defaults:
+  - config_moving_sphere_g0_s0_ppo
+  - _self_
+
+env:
+  task: FoodRobot-StaticSphereMovingBowl-v0
+  num_envs: 512
+  arm: zu5_ag95
+  food: rigid
+  food_params:
+    spawn_range: 0.008
+    static_friction_range: [0.9, 1.2]
+    dynamic_friction_range: [0.8, 1.0]
+    restitution_range: [0.0, 0.0]
+    mass_scale_range: [0.9, 1.1]
+  action_mode: ee_delta_pose
+  action_adapter: native
+  gripper_action_mode: continuous
+  ik_action_scale: 0.02
+  cameras: false
+  privileged_information: false
+  grasp_observation: false
+  temporal_history_steps: 0
+  position_history_steps: 10
+  grasp_point_observation: true
+  speed_free_observations: true
+  belt:
+    speed: 0.10
+    speed_noise: 0.0
+    place_window: 7.5
+    pallet_start_range: [0.0, 0.0]
+    bowl_offset_x: [0.0, 0.0]
+    bowl_offset_y: [0.0, 0.0]
+    episode_completion_margin: 8.0
+  # Use the near-side grasp basin already validated by the JAKA placement
+  # task.  The former far-side pose (0.30, 0.59) was MuJoCo-reachable but put
+  # the Isaac ZU5 in a low, near-maximum-reach posture: it closed correctly,
+  # then dragged the sphere laterally instead of lifting.  The 24 mm riser
+  # retains a real supported sphere centre near z=5 cm.
+  ingredient_bowl_pos: [0.45, 0.00, 0.024]
+  ingredient_bowl_x_range: [0.45, 0.45]
+  ingredient_bowl_y_range: [0.00, 0.00]
+  reward_set: simple_v3b
+  success_requires_home: true
+  home_tolerance: 0.025
+  success_settle_steps: 5
+  robot_reset:
+    position_range: [-0.002, 0.002]
+    velocity_range: [0.0, 0.0]
+  stable_sphere_grasp_option:
+    enabled: false
+  stable_sphere_residual_skill:
+    enabled: true
+    intercept_x: null
+    intercept_lead_distance: 0.08
+    hover_height: 0.20
+    pre_descent_height: null
+    hover_translation_threshold: 0.012
+    grasp_translation_threshold: 0.007
+    rotation_threshold: 0.15
+    alignment_steps: 4
+    close_steps: 16
+    hold_steps: 10
+    lift_steps: 60
+    lift_timeout_steps: 300
+    lift_height: 0.05
+    lift_tolerance: 0.003
+    lift_xy_gain: 0.01
+    max_lift_xy_step: 0.002
+    preserve_lift_relative_xy: true
+    settled_coupling_reference: true
+    position_gain: 1.5
+    align_position_gain: 4.0
+    rotation_gain: 0.5
+    max_hover_position_step: 0.016
+    max_hover_rotation_step: 0.02
+    align_fine_distance: 0.02
+    max_align_position_step: 0.016
+    max_align_fine_position_step: 0.008
+    max_position_step: 0.004
+    max_rotation_step: 0.01
+    close_action: -0.43
+    translation_alpha: 0.45
+    rotation_alpha: 0.35
+    max_translation_jump: 0.02
+    max_rotation_jump: 0.35
+    stable_translation: 0.004
+    stable_rotation: 0.08
+    stable_steps: 4
+    rotation_weight: 0.05
+    switch_margin: 0.01
+    translation_residual_limit: 0.03
+    rotation_residual_limit: 0.015
+  stable_sphere_pick_place_skill:
+    enabled: true
+    clear_height: 0.20
+    bowl_hover_height: 0.16
+    release_height: 0.11
+    position_gain: 4.0
+    max_position_step: 0.020
+    max_translation_action_delta: 0.08
+    max_lower_xy_step: 0.020
+    position_deadband: 0.001
+    clear_tolerance: 0.012
+    hover_tolerance: 0.025
+    release_tolerance: 0.020
+    stable_steps: 3
+    release_steps: 28
+    close_action: -0.43
+    open_action: 1.0
+    home_position: [0.45, 0.30, 0.134]
+    retreat_height: 0.20
+    retreat_tolerance: 0.015
+    home_tolerance: 0.025
+    max_home_position_step: 0.016
+
+network:
+  actor_out_gain: 0.0
+  log_std_init: -4.0
+
+collector:
+  total_frames: 500_000
+
+checkpoint:
+  interval_frames: 100_000
+
+loss:
+  entropy_coeff: 0.0
+  freeze_actor_scale: true
+  action_l1_coeff: 0.02
+
+worker:
+  enabled: false
+
+early_stop:
+  success_rate: null
+  consecutive_evals: 1
+
+run:
+  name: jaka_static_sphere_moving_bowl_m0_speed010_512_no_rtx

@@ -1,0 +1,17 @@
+# Final requested belt range; warm-start from the selected s0b checkpoint.
+defaults:
+  - config_sphere_gap_s0a
+  - _self_
+
+env:
+  belt:
+    speed: 0.06
+    speed_noise: 0.25       # 0.045--0.075 m/s
+    place_window: 6.6666667
+    pallet_start_range: [-0.04, 0.04]
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.02, 0.02]
+
+run:
+  name: sphere_gap_s0c_sac_64_no_rtx
+

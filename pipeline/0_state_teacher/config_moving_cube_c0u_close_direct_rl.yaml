@@ -1,0 +1,39 @@
+# C0u-1: first stage of speed-free direct RL.
+# Learn interception, alignment, and stable closure before any lift objective.
+defaults:
+  - config_moving_cube_c0t_gap_direct_rl
+  - _self_
+
+env:
+  belt:
+    # Easier but still randomized first-stage range: 0.045--0.075 m/s.
+    speed: 0.06
+    speed_noise: 0.25
+  reward_set: moving_cube_close_v1
+  geometric_slip_penalty: 0.0
+  geometric_close_curriculum:
+    success_steps: 5
+    distance_threshold: 0.045
+    min_close_fraction: 0.15
+    max_close_fraction: 0.90
+    far_close_penalty: 0.50
+
+init_checkpoint: null
+init_actor_scale: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 20_000_000
+
+optim:
+  lr: 3.0e-4
+  anneal_lr: true
+
+checkpoint:
+  interval_frames: 2_000_000
+
+logger:
+  exp_name: moving_cube_c0u_close_direct_rl
+
+run:
+  name: moving_cube_c0u_close_direct_rl_4096_no_rtx

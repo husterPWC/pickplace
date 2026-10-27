@@ -27,7 +27,7 @@ Requires an NVIDIA GPU (≥ 16 GB VRAM recommended) and Docker with the NVIDIA C
     ./docker/run.sh python scripts/verify_install.py
 
 Every command below runs inside the container. Artifacts are written outside the repository, to
-`$FOOD_ROBOT_ARTIFACTS_HOST` (default `~/food-robot-artifacts`), mounted at `/workspace/artifacts`.
+`$FOOD_ROBOT_ARTIFACTS_HOST` (default `<repo>/artifacts` in this fork), mounted at `/workspace/artifacts`.
 
 <details>
 <summary>Weights &amp; Biases, bare install without Docker, remote machines</summary>
@@ -38,7 +38,7 @@ Training logs to W&B when `logger.backend=wandb`. Export `WANDB_API_KEY` or put 
 Without Docker (untested end to end):
 
     OMNI_KIT_ACCEPT_EULA=YES ./scripts/setup_env.sh
-    source .venv/bin/activate
+    source scripts/activate_local.sh
 
 On aarch64, install the build dependencies first and preload Isaac Sim's OpenMP/carb libraries:
 
@@ -71,6 +71,11 @@ final checkpoint and evaluation are still written:
 
 `demo.py video=false` returns the counts without rendering. `pipeline/2_1_offline_rl/robustness.py` sweeps
 degraded observations, and `scripts/render_scene_stills.py` produces figures from the scene camera.
+
+The local Franka closed-loop MuJoCo sim-to-sim harness and live-viewer commands
+are documented in [`mujoco_sim/README.md`](mujoco_sim/README.md). It uses the
+frozen Isaac teacher on MuJoCo-generated state at every control step; it is not
+trajectory replay.
 
 <details>
 <summary>Changing the configuration</summary>

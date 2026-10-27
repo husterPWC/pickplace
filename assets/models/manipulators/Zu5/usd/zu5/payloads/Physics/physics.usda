@@ -1,0 +1,267 @@
+#usda 1.0
+(
+    customLayerData = {
+        string creator = "URDF USD Converter v0.1.3"
+    }
+    defaultPrim = "jaka_zu5"
+    doc = """Generated from Composed Stage of root layer /tmp/tmpq7vtrsf1/jaka_zu5.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_zu5_sss6s9gv/usdex_zu5/jaka_zu5.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_zu5_sss6s9gv/temp_zu5/zu5.usd
+
+
+Generated from Composed Stage of root layer /data/CodePWC/pickplace/assets/models/manipulators/Zu5/usd/zu5/payloads/base.usd
+"""
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "jaka_zu5"
+{
+    over "Geometry" (
+        prepend apiSchemas = ["PhysicsArticulationRootAPI", "NewtonArticulationRootAPI"]
+    )
+    {
+        bool newton:selfCollisionEnabled = 0
+
+        over "Link_0" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            point3f physics:centerOfMass = (0.00438, 0.016627, 0.000055)
+            float3 physics:diagonalInertia = (0.0014, 0.0024, 0.0035)
+            float physics:mass = 0.905
+            quatf physics:principalAxes = (-0.70710677, 0.70710677, 0, 0)
+
+            over "Link_1" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (-2.5186e-7, 0.0033226, -0.001509)
+                float3 physics:diagonalInertia = (0.030523, 0.043091, 0.044302)
+                float physics:mass = 3.78375
+                quatf physics:principalAxes = (0.7070908, 0.00035839333, 0.7071225, 0.0004476234)
+
+                over "Link_2" (
+                    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                )
+                {
+                    point3f physics:centerOfMass = (0.215, 6.4325e-9, -0.14315)
+                    float3 physics:diagonalInertia = (0.10377, 1.5689, 1.5964)
+                    float physics:mass = 11.46175
+                    quatf physics:principalAxes = (0, 0, 0.70710677, 0.70710677)
+
+                    over "Link_3" (
+                        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                    )
+                    {
+                        point3f physics:centerOfMass = (0.19087, -0.000011862, -0.010587)
+                        float3 physics:diagonalInertia = (0.0207552, 0.412021, 0.41632)
+                        float physics:mass = 4.51725
+                        quatf physics:principalAxes = (0.020469308, -0.0204764, 0.70679265, 0.706828)
+
+                        over "Link_4" (
+                            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                        )
+                        {
+                            point3f physics:centerOfMass = (-0.0000021345, -0.0058004, 0.0026717)
+                            float3 physics:diagonalInertia = (0.00522324, 0.00897016, 0.0092564)
+                            float physics:mass = 1.388
+                            quatf physics:principalAxes = (0.49437594, 0.50554764, 0.49441648, 0.5055357)
+
+                            over "Link_5" (
+                                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                            )
+                            {
+                                point3f physics:centerOfMass = (-0.0000020304, -0.0028889, -0.0023424)
+                                float3 physics:diagonalInertia = (0.0058451, 0.0127003, 0.012993)
+                                float physics:mass = 1.583475
+                                quatf physics:principalAxes = (0.50166214, 0.49833983, 0.5016458, 0.49834114)
+
+                                over "Link_6" (
+                                    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                                )
+                                {
+                                    point3f physics:centerOfMass = (0.000027652, -0.000013485, -0.021245)
+                                    float3 physics:diagonalInertia = (0.000718438, 0.00072384, 0.0011337)
+                                    float physics:mass = 0.3425
+                                    quatf physics:principalAxes = (-0.06515694, -0.0007021427, 0.0010625012, 0.9978742)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    over "Physics"
+    {
+        def PhysicsRevoluteJoint "joint_1" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0.1
+            float drive:angular:physics:maxForce = 150
+            float drive:angular:physics:stiffness = 1.7453293
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Z"
+            custom rel physics:body0
+            prepend rel physics:body0 = </jaka_zu5/Geometry/Link_0>
+            custom rel physics:body1
+            prepend rel physics:body1 = </jaka_zu5/Geometry/Link_0/Link_1>
+            point3f physics:localPos0 = (0, 0, 0.12015)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            float physics:lowerLimit = -359.8175
+            float physics:upperLimit = 359.8175
+            custom float urdf:dynamics:damping = 0.1
+            custom float urdf:dynamics:friction = 0
+            custom float urdf:limit:effort = 150
+            custom float urdf:limit:velocity = 3.14
+        }
+
+        def PhysicsRevoluteJoint "joint_2" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0.1
+            float drive:angular:physics:maxForce = 150
+            float drive:angular:physics:stiffness = 1.7453293
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Z"
+            custom rel physics:body0
+            prepend rel physics:body0 = </jaka_zu5/Geometry/Link_0/Link_1>
+            custom rel physics:body1
+            prepend rel physics:body1 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2>
+            point3f physics:localPos0 = (0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (0.7071053, 0.70710826, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            float physics:lowerLimit = -84.79775
+            float physics:upperLimit = 264.7065
+            custom float urdf:dynamics:damping = 0.1
+            custom float urdf:dynamics:friction = 0
+            custom float urdf:limit:effort = 150
+            custom float urdf:limit:velocity = 3.14
+        }
+
+        def PhysicsRevoluteJoint "joint_3" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0.1
+            float drive:angular:physics:maxForce = 150
+            float drive:angular:physics:stiffness = 1.7453293
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Z"
+            custom rel physics:body0
+            prepend rel physics:body0 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2>
+            custom rel physics:body1
+            prepend rel physics:body1 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2/Link_3>
+            point3f physics:localPos0 = (0.43, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            float physics:lowerLimit = -174.75212
+            float physics:upperLimit = 174.75212
+            custom float urdf:dynamics:damping = 0.1
+            custom float urdf:dynamics:friction = 0
+            custom float urdf:limit:effort = 150
+            custom float urdf:limit:velocity = 3.14
+        }
+
+        def PhysicsRevoluteJoint "joint_4" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0.1
+            float drive:angular:physics:maxForce = 28
+            float drive:angular:physics:stiffness = 1.7453293
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Z"
+            custom rel physics:body0
+            prepend rel physics:body0 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2/Link_3>
+            custom rel physics:body1
+            prepend rel physics:body1 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2/Link_3/Link_4>
+            point3f physics:localPos0 = (0.3685, -0.00001185, -0.114)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            float physics:lowerLimit = -84.79775
+            float physics:upperLimit = 264.7065
+            custom float urdf:dynamics:damping = 0.1
+            custom float urdf:dynamics:friction = 0
+            custom float urdf:limit:effort = 28
+            custom float urdf:limit:velocity = 3.14
+        }
+
+        def PhysicsRevoluteJoint "joint_5" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0.1
+            float drive:angular:physics:maxForce = 28
+            float drive:angular:physics:stiffness = 1.7453293
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Z"
+            custom rel physics:body0
+            prepend rel physics:body0 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2/Link_3/Link_4>
+            custom rel physics:body1
+            prepend rel physics:body1 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2/Link_3/Link_4/Link_5>
+            point3f physics:localPos0 = (1.110223e-16, -0.1135, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (0.7071053, 0.70710826, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            float physics:lowerLimit = -359.8175
+            float physics:upperLimit = 359.8175
+            custom float urdf:dynamics:damping = 0.1
+            custom float urdf:dynamics:friction = 0
+            custom float urdf:limit:effort = 28
+            custom float urdf:limit:velocity = 3.14
+        }
+
+        def PhysicsRevoluteJoint "joint_6" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0.1
+            float drive:angular:physics:maxForce = 28
+            float drive:angular:physics:stiffness = 1.7453293
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Z"
+            custom rel physics:body0
+            prepend rel physics:body0 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2/Link_3/Link_4/Link_5>
+            custom rel physics:body1
+            prepend rel physics:body1 = </jaka_zu5/Geometry/Link_0/Link_1/Link_2/Link_3/Link_4/Link_5/Link_6>
+            point3f physics:localPos0 = (1.110223e-16, 0.107, -8.6736174e-19)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (0.7071053, -0.70710826, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            float physics:lowerLimit = -359.8175
+            float physics:upperLimit = 359.8175
+            custom float urdf:dynamics:damping = 0.1
+            custom float urdf:dynamics:friction = 0
+            custom float urdf:limit:effort = 28
+            custom float urdf:limit:velocity = 3.14
+        }
+
+        def PhysicsFixedJoint "root_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </jaka_zu5>
+            custom rel physics:body1
+            prepend rel physics:body1 = </jaka_zu5/Geometry/Link_0>
+            point3f physics:localPos0 = (0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+    }
+}
+

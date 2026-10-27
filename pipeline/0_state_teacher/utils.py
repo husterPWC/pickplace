@@ -47,13 +47,123 @@ class StateNet(nn.Module):
 
 
 class ActorNet(nn.Module):
-    def __init__(self, body: StateNet, action_dim: int):
+    def __init__(self, body: nn.Module, action_dim: int, log_std_init: float = 0.0):
         super().__init__()
         self.body = body
-        self.scale = AddStateIndependentNormalScale(action_dim, scale_lb=1e-4)
+        self.scale = AddStateIndependentNormalScale(
+            action_dim, scale_lb=1e-4, init_value=float(log_std_init)
+        )
 
     def forward(self, *xs: torch.Tensor):
         return self.scale(self.body(*xs))
+
+
+def action_l1_penalty(action: torch.Tensor) -> torch.Tensor:
+    """Mean absolute policy command, used to regularize residual actions."""
+    if action.numel() == 0:
+        raise ValueError("action tensor must be non-empty")
+    return action.abs().mean()
+
+
+class TemporalResidualStateNet(nn.Module):
+    """Warm-startable MLP plus a zero-initialized GRU residual.
+
+    The base branch has exactly the original teacher architecture.  The GRU
+    sees the oldest-to-newest motion history and initially contributes zero,
+    so importing C0a starts from its sensor-compatible behaviour instead of
+    relearning interception from scratch.
+    """
+
+    def __init__(
+        self, base_shapes, history_shape, hidden, temporal_hidden: int,
+        out_dim: int, out_gain: float, residual_limit: float | None = None,
+    ):
+        super().__init__()
+        if len(history_shape) != 2:
+            raise ValueError(f"temporal history must have shape (steps, features), got {history_shape}")
+        self.base = StateNet(base_shapes, hidden, out_dim, out_gain)
+        self.gru = nn.GRU(input_size=history_shape[-1], hidden_size=temporal_hidden, batch_first=True)
+        self.temporal_head = nn.Linear(temporal_hidden, out_dim)
+        self.residual_limit = residual_limit
+        nn.init.zeros_(self.temporal_head.weight)
+        nn.init.zeros_(self.temporal_head.bias)
+
+    def forward(self, *xs: torch.Tensor) -> torch.Tensor:
+        *base_xs, history = xs
+        base = self.base(*base_xs)
+        leading = history.shape[:-2]
+        sequence = history.float().reshape(-1, *history.shape[-2:])
+        encoded, _ = self.gru(sequence)
+        residual = self.temporal_head(encoded[:, -1])
+        if self.residual_limit is not None:
+            residual = self.residual_limit * torch.tanh(residual)
+        residual = residual.reshape(*leading, -1)
+        return base + residual
+
+
+class GraspPointGRUStateNet(nn.Module):
+    """Encode grasp candidates and position history without explicit speed.
+
+    Candidate points are encoded point-wise and pooled first within each grasp
+    and then across grasps.  The recurrent branch sees only position, finger,
+    and previous-action history.  Remaining vector observations form the robot
+    state branch.
+    """
+
+    def __init__(
+        self,
+        shapes,
+        grasp_index: int,
+        history_index: int,
+        hidden,
+        point_hidden: int,
+        temporal_hidden: int,
+        out_dim: int,
+        out_gain: float,
+    ):
+        super().__init__()
+        grasp_shape, history_shape = shapes[grasp_index], shapes[history_index]
+        if len(grasp_shape) != 3 or grasp_shape[-1] != 3:
+            raise ValueError(f"grasp points must have shape (grasps, points, 3), got {grasp_shape}")
+        if len(history_shape) != 2:
+            raise ValueError(f"position history must have shape (steps, features), got {history_shape}")
+        self.shapes = shapes
+        self.grasp_index = grasp_index
+        self.history_index = history_index
+        self.point_encoder = nn.Sequential(
+            nn.Linear(3, point_hidden), nn.ELU(), nn.Linear(point_hidden, point_hidden), nn.ELU()
+        )
+        self.grasp_encoder = nn.Sequential(nn.Linear(point_hidden, point_hidden), nn.ELU())
+        self.gru = nn.GRU(history_shape[-1], temporal_hidden, batch_first=True)
+        vector_dim = sum(math.prod(shape) for i, shape in enumerate(shapes) if i not in (grasp_index, history_index))
+        self.fusion = MLP(
+            in_features=vector_dim + point_hidden + temporal_hidden,
+            out_features=out_dim,
+            num_cells=list(hidden),
+            activation_class=nn.ELU,
+        )
+        linears = [module for module in self.modules() if isinstance(module, nn.Linear)]
+        for layer in linears:
+            nn.init.orthogonal_(layer.weight, math.sqrt(2))
+            nn.init.zeros_(layer.bias)
+        fusion_linears = [module for module in self.fusion.modules() if isinstance(module, nn.Linear)]
+        nn.init.orthogonal_(fusion_linears[-1].weight, out_gain)
+
+    def forward(self, *xs: torch.Tensor) -> torch.Tensor:
+        points, history = xs[self.grasp_index], xs[self.history_index]
+        leading = points.shape[:-3]
+        point_features = self.point_encoder(points.float())
+        grasp_features = point_features.max(dim=-2).values
+        grasp_features = self.grasp_encoder(grasp_features).max(dim=-2).values
+        sequence = history.float().reshape(-1, *history.shape[-2:])
+        temporal_features, _ = self.gru(sequence)
+        temporal_features = temporal_features[:, -1].reshape(*leading, -1)
+        vectors = [
+            value.float().reshape(*leading, -1)
+            for index, value in enumerate(xs)
+            if index not in (self.grasp_index, self.history_index)
+        ]
+        return self.fusion(torch.cat((*vectors, grasp_features, temporal_features), dim=-1))
 
 
 def make_teacher_models(env, network_cfg, device: torch.device):
@@ -65,14 +175,63 @@ def make_teacher_models(env, network_cfg, device: torch.device):
     def shapes(keys):
         return [tuple(spec[k].shape[ndim:]) for k in keys]
 
+    architecture = str(getattr(network_cfg, "architecture", "mlp"))
     actor_keys = expand_in_keys(spec, list(network_cfg.actor_in_keys))
     critic_keys = expand_in_keys(spec, list(network_cfg.critic_in_keys))
+    temporal_key = None
+    grasp_key = None
+    if architecture == "temporal_residual_gru":
+        temporal_key = tuple(getattr(network_cfg, "temporal_in_key", ["temporal", "motion"]))
+        if temporal_key not in actor_keys or temporal_key not in critic_keys:
+            raise ValueError("temporal_residual_gru requires temporal_in_key in both actor_in_keys and critic_in_keys")
+    elif architecture == "grasp_point_gru":
+        temporal_key = tuple(getattr(network_cfg, "temporal_in_key", ["position_history", "position_action"]))
+        grasp_key = tuple(getattr(network_cfg, "grasp_in_key", ["grasp_guidance", "points_ee"]))
+        for name, keys in (("actor", actor_keys), ("critic", critic_keys)):
+            if temporal_key not in keys or grasp_key not in keys:
+                raise ValueError(
+                    f"grasp_point_gru requires temporal_in_key and grasp_in_key in {name}_in_keys"
+                )
+    elif architecture != "mlp":
+        raise ValueError(f"Unknown teacher network architecture {architecture!r}")
     for key in actor_keys + critic_keys:
-        if len(spec[key].shape[ndim:]) > 1:
+        rank = len(spec[key].shape[ndim:])
+        if rank > 1 and key not in (temporal_key, grasp_key):
             raise ValueError(f"The state teacher takes vector observations only; {key} has shape {spec[key].shape}.")
+
+    def make_body(keys, out_dim, out_gain, residual_limit=None):
+        if architecture == "mlp":
+            return StateNet(shapes(keys), network_cfg.hidden, out_dim, out_gain)
+        if architecture == "grasp_point_gru":
+            return GraspPointGRUStateNet(
+                shapes(keys),
+                keys.index(grasp_key),
+                keys.index(temporal_key),
+                network_cfg.hidden,
+                int(getattr(network_cfg, "point_hidden", 64)),
+                int(getattr(network_cfg, "temporal_hidden", 64)),
+                out_dim,
+                out_gain,
+            )
+        base_keys = [key for key in keys if key != temporal_key]
+        history_shape = tuple(spec[temporal_key].shape[ndim:])
+        return TemporalResidualStateNet(
+            shapes(base_keys), history_shape, network_cfg.hidden,
+            int(getattr(network_cfg, "temporal_hidden", 64)), out_dim, out_gain, residual_limit,
+        )
+
     actor = ProbabilisticActor(
         TensorDictModule(
-            ActorNet(StateNet(shapes(actor_keys), network_cfg.hidden, action_dim, out_gain=0.01), action_dim),
+            ActorNet(
+                make_body(
+                    actor_keys,
+                    action_dim,
+                    out_gain=float(getattr(network_cfg, "actor_out_gain", 0.01)),
+                    residual_limit=getattr(network_cfg, "temporal_actor_residual_limit", None),
+                ),
+                action_dim,
+                log_std_init=float(getattr(network_cfg, "log_std_init", 0.0)),
+            ),
             in_keys=actor_keys,
             out_keys=["loc", "scale"],
         ),
@@ -87,8 +246,32 @@ def make_teacher_models(env, network_cfg, device: torch.device):
         return_log_prob=True,
         default_interaction_type=ExplorationType.RANDOM,
     )
-    critic = ValueOperator(StateNet(shapes(critic_keys), network_cfg.hidden, 1, out_gain=1.0), in_keys=critic_keys)
+    critic = ValueOperator(make_body(critic_keys, 1, out_gain=1.0), in_keys=critic_keys)
     return actor.to(device), critic.to(device)
+
+
+def _load_temporal_base(module, old_state: dict[str, torch.Tensor], kind: str) -> int:
+    """Copy an old MLP into a temporal residual model, dropping trailing removed inputs."""
+    new_state = module.state_dict()
+    copied = 0
+    for new_name, new_value in new_state.items():
+        if kind == "actor":
+            old_name = new_name.replace(".body.base.", ".body.")
+        else:
+            old_name = new_name.replace("module.base.", "module.")
+        old_value = old_state.get(old_name)
+        if old_value is None:
+            continue
+        if old_value.shape == new_value.shape:
+            new_state[new_name] = old_value
+            copied += 1
+        elif old_value.ndim == 2 and old_value.shape[0] == new_value.shape[0] and old_value.shape[1] > new_value.shape[1]:
+            # C0m removes the lexicographically-last privileged/is_grasped
+            # scalar.  All preceding input columns retain their exact order.
+            new_state[new_name] = old_value[:, : new_value.shape[1]]
+            copied += 1
+    module.load_state_dict(new_state)
+    return copied
 
 
 def load_teacher_weights(checkpoint_path, actor, critic, device: torch.device) -> None:
@@ -101,8 +284,20 @@ def load_teacher_weights(checkpoint_path, actor, critic, device: torch.device) -
     try:
         actor.load_state_dict(checkpoint["actor"])
         critic.load_state_dict(checkpoint["critic"])
+        return
     except RuntimeError as error:
-        raise RuntimeError(f"init_checkpoint {checkpoint_path} does not match this run's network config: {error}") from error
+        temporal = any(".body.base." in name for name in actor.state_dict())
+        if not temporal:
+            raise RuntimeError(
+                f"init_checkpoint {checkpoint_path} does not match this run's network config: {error}"
+            ) from error
+    actor_count = _load_temporal_base(actor, checkpoint["actor"], "actor")
+    critic_count = _load_temporal_base(critic, checkpoint["critic"], "critic")
+    if actor_count < 2 or critic_count < 2:
+        raise RuntimeError(
+            f"init_checkpoint {checkpoint_path} did not contain a compatible MLP base "
+            f"(copied actor={actor_count}, critic={critic_count} tensors)"
+        )
 
 
 def load_teacher_actor(checkpoint_path, env, device: torch.device):
@@ -111,6 +306,60 @@ def load_teacher_actor(checkpoint_path, env, device: torch.device):
     actor, _ = make_teacher_models(env, OmegaConf.create(checkpoint["config"]["network"]), device)
     actor.load_state_dict(checkpoint["actor"])
     return actor
+
+
+def gaussian_reference_kl(
+    loc: torch.Tensor,
+    scale: torch.Tensor,
+    reference_loc: torch.Tensor,
+    reference_scale: torch.Tensor,
+    action_weights: torch.Tensor | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return ``KL(current || reference)`` and its mean-shift contribution.
+
+    The teacher uses the same invertible tanh transform for both policies, so
+    the KL of their pre-tanh diagonal Gaussians is also the KL of the action
+    distributions.  The second result isolates the normalized mean drift; it
+    is useful for explicitly keeping a fine-tuned deterministic policy close
+    to the checkpoint that it started from.
+    """
+    reference_scale = reference_scale.clamp_min(torch.finfo(reference_scale.dtype).tiny)
+    scale = scale.clamp_min(torch.finfo(scale.dtype).tiny)
+    normalized_mean_sq = ((loc - reference_loc) / reference_scale).square()
+    per_dim_full = (
+        torch.log(reference_scale / scale)
+        + 0.5 * ((scale / reference_scale).square() + normalized_mean_sq - 1.0)
+    )
+    if action_weights is not None:
+        action_weights = torch.as_tensor(action_weights, dtype=loc.dtype, device=loc.device)
+        if action_weights.ndim != 1 or action_weights.numel() != loc.shape[-1]:
+            raise ValueError(
+                f"reference action weights have shape {tuple(action_weights.shape)}; "
+                f"expected ({loc.shape[-1]},)"
+            )
+        if bool((action_weights < 0).any()) or not bool((action_weights > 0).any()):
+            raise ValueError("reference action weights must be non-negative with at least one positive value")
+        normalized_mean_sq = normalized_mean_sq * action_weights
+        per_dim_full = per_dim_full * action_weights
+    mean_kl = 0.5 * normalized_mean_sq.sum(dim=-1).mean()
+    full_kl = per_dim_full.sum(dim=-1).mean()
+    return full_kl, mean_kl
+
+
+def reference_policy_kl(actor, reference_actor, batch, action_weights=None) -> tuple[torch.Tensor, torch.Tensor]:
+    """Evaluate the current/reference analytic KL on a PPO observation batch."""
+    # Write distribution parameters to fresh TensorDicts: PPO batches contain
+    # the rollout policy's ``loc``/``scale`` and those must remain unchanged.
+    current = actor.get_dist(batch, tensordict_out=batch.empty())
+    with torch.no_grad():
+        reference = reference_actor.get_dist(batch, tensordict_out=batch.empty())
+    return gaussian_reference_kl(
+        current.loc,
+        current.scale,
+        reference.loc.detach(),
+        reference.scale.detach(),
+        action_weights=action_weights,
+    )
 
 
 def save_teacher_checkpoint(run_dir, name: str, actor, critic, optim, cfg, frames: int, iteration: int) -> Path:

@@ -1,0 +1,225 @@
+<mujoco model="pickplace_franka_sim2sim">
+  <compiler angle="radian" meshdir="assets/franka/meshes" autolimits="true"/>
+  <option timestep="0.002" integrator="implicitfast" gravity="0 0 -9.81" cone="elliptic"
+    iterations="80" noslip_iterations="4"/>
+  <size njmax="3000" nconmax="600"/>
+
+  <visual>
+    <global azimuth="128" elevation="-24" offwidth="1280" offheight="720"/>
+    <headlight diffuse="0.7 0.7 0.7" ambient="0.35 0.35 0.35" specular="0.25 0.25 0.25"/>
+    <rgba haze="0.15 0.20 0.25 1"/>
+  </visual>
+
+  <default>
+    <!-- Menagerie uses 0.1 armature to regularize Panda's small wrist inertias in MuJoCo. -->
+    <joint armature="0.1" damping="0" limited="true"/>
+    <geom condim="4" solimp="0.95 0.99 0.001" solref="0.005 1" friction="0.9 0.02 0.001"/>
+    <default class="robot_visual">
+      <geom type="mesh" contype="0" conaffinity="0" group="2" material="robot_white"/>
+    </default>
+    <default class="robot_collision">
+      <geom type="mesh" group="3" rgba="0.2 0.23 0.27 0.12" friction="1.1 0.02 0.001"/>
+    </default>
+    <default class="finger_pad">
+      <geom type="box" size="0.009 0.0045 0.010" pos="0 0.006 0.047"
+        friction="1.5 0.02 0.001" solimp="0.85 0.95 0.005" solref="0.02 1"/>
+    </default>
+  </default>
+
+  <asset>
+    <material name="robot_white" rgba="0.91 0.92 0.93 1" specular="0.35" shininess="0.25"/>
+    <material name="robot_dark" rgba="0.12 0.14 0.17 1" specular="0.3"/>
+    <material name="table" rgba="0.22 0.23 0.25 1"/>
+    <material name="belt" rgba="0.055 0.06 0.07 1"/>
+    <material name="pallet" rgba="0.20 0.22 0.24 1"/>
+    <material name="bowl" rgba="0.25 0.65 0.83 1"/>
+    <material name="supply" rgba="0.30 0.55 0.68 1"/>
+    <material name="food" rgba="0.08 0.65 0.18 1"/>
+    <material name="home" rgba="0.95 0.55 0.10 0.55"/>
+
+    <mesh name="link0_mesh" file="panda_link0.stl"/>
+    <mesh name="link1_mesh" file="panda_link1.stl"/>
+    <mesh name="link2_mesh" file="panda_link2.stl"/>
+    <mesh name="link3_mesh" file="panda_link3.stl"/>
+    <mesh name="link4_mesh" file="panda_link4.stl"/>
+    <mesh name="link5_mesh" file="panda_link5.stl"/>
+    <mesh name="link6_mesh" file="panda_link6.stl"/>
+    <mesh name="link7_mesh" file="panda_link7.stl"/>
+    <mesh name="hand_mesh" file="panda_hand.stl"/>
+    <mesh name="leftfinger_mesh" file="panda_leftfinger.stl"/>
+    <mesh name="rightfinger_mesh" file="panda_rightfinger.stl"/>
+  </asset>
+
+  <worldbody>
+    <light name="key" pos="0.3 -0.4 2.0" dir="0.1 0.2 -1" diffuse="0.85 0.85 0.85"/>
+    <light name="fill" pos="1.3 0.8 1.2" dir="-0.7 -0.3 -0.7" diffuse="0.45 0.50 0.58"/>
+    <geom name="floor" type="plane" pos="0 0 -1.05" size="4 4 0.1" rgba="0.10 0.12 0.14 1"/>
+    <geom name="table" type="box" pos="0.45 0 -0.40" size="0.75 0.55 0.40" material="table"/>
+    <geom name="belt_visual" type="box" pos="0.45 0.30 0.016" size="0.55 0.15 0.004" material="belt"
+      contype="0" conaffinity="0"/>
+    <site name="home_marker" type="sphere" pos="0.4633 0 0.3855" size="0.018" material="home" group="4"/>
+
+    <!-- Franka Panda kinematics and inertias follow the official MuJoCo Menagerie model. -->
+    <body name="link0" gravcomp="1">
+      <inertial mass="0.629769" pos="-0.041018 -0.00014 0.049974"
+        fullinertia="0.00315 0.00388 0.004285 8.2904e-7 0.00015 8.2299e-6"/>
+      <geom mesh="link0_mesh" class="robot_visual" material="robot_dark"/>
+      <geom mesh="link0_mesh" class="robot_collision"/>
+      <body name="link1" pos="0 0 0.333" gravcomp="1">
+        <inertial mass="4.970684" pos="0.003875 0.002081 -0.04762"
+          fullinertia="0.70337 0.70661 0.0091170 -0.00013900 0.0067720 0.019169"/>
+        <joint name="joint1" axis="0 0 1" range="-2.8973 2.8973"/>
+        <geom mesh="link1_mesh" class="robot_visual"/>
+        <geom mesh="link1_mesh" class="robot_collision"/>
+        <body name="link2" quat="1 -1 0 0" gravcomp="1">
+          <inertial mass="0.646926" pos="-0.003141 -0.02872 0.003495"
+            fullinertia="0.0079620 2.8110e-2 2.5995e-2 -3.925e-3 1.0254e-2 7.04e-4"/>
+          <joint name="joint2" axis="0 0 1" range="-1.7628 1.7628"/>
+          <geom mesh="link2_mesh" class="robot_visual" material="robot_dark"/>
+          <geom mesh="link2_mesh" class="robot_collision"/>
+          <body name="link3" pos="0 -0.316 0" quat="1 1 0 0" gravcomp="1">
+            <inertial mass="3.228604" pos="0.027518 0.039252 -0.066502"
+              fullinertia="0.037242 0.036155 0.01083 -0.004761 -0.011396 -0.012805"/>
+            <joint name="joint3" axis="0 0 1" range="-2.8973 2.8973"/>
+            <geom mesh="link3_mesh" class="robot_visual"/>
+            <geom mesh="link3_mesh" class="robot_collision"/>
+            <body name="link4" pos="0.0825 0 0" quat="1 1 0 0" gravcomp="1">
+              <inertial mass="3.587895" pos="-0.05317 0.104419 0.027454"
+                fullinertia="0.025853 0.019552 0.028323 0.007796 -0.001332 0.008641"/>
+              <joint name="joint4" axis="0 0 1" range="-3.0718 -0.0698"/>
+              <geom mesh="link4_mesh" class="robot_visual" material="robot_dark"/>
+              <geom mesh="link4_mesh" class="robot_collision"/>
+              <body name="link5" pos="-0.0825 0.384 0" quat="1 -1 0 0" gravcomp="1">
+                <inertial mass="1.225946" pos="-0.011953 0.041065 -0.038437"
+                  fullinertia="0.035549 0.029474 0.008627 -0.002117 -0.004037 0.000229"/>
+                <joint name="joint5" axis="0 0 1" range="-2.8973 2.8973"/>
+                <geom mesh="link5_mesh" class="robot_visual"/>
+                <geom mesh="link5_mesh" class="robot_collision"/>
+                <body name="link6" quat="1 1 0 0" gravcomp="1">
+                  <inertial mass="1.666555" pos="0.060149 -0.014117 -0.010517"
+                    fullinertia="0.001964 0.004354 0.005433 0.000109 -0.001158 0.000341"/>
+                  <joint name="joint6" axis="0 0 1" range="-0.0175 3.7525"/>
+                  <geom mesh="link6_mesh" class="robot_visual" material="robot_dark"/>
+                  <geom mesh="link6_mesh" class="robot_collision"/>
+                  <body name="link7" pos="0.088 0 0" quat="1 1 0 0" gravcomp="1">
+                    <inertial mass="0.735522" pos="0.010517 -0.004252 0.061597"
+                      fullinertia="0.012516 0.010027 0.004815 -0.000428 -0.001196 -0.000741"/>
+                    <joint name="joint7" axis="0 0 1" range="-2.8973 2.8973"/>
+                    <geom mesh="link7_mesh" class="robot_visual"/>
+                    <geom mesh="link7_mesh" class="robot_collision"/>
+                    <body name="hand" pos="0 0 0.107" quat="0.9238795 0 0 -0.3826834" gravcomp="1">
+                      <inertial mass="0.73" pos="-0.01 0 0.03" diaginertia="0.001 0.0025 0.0017"/>
+                      <geom mesh="hand_mesh" class="robot_visual" material="robot_dark"/>
+                      <!-- Do not use the single hand/finger STL files as convex collision hulls:
+                           their hulls fill the gripper opening and eject small objects. The two
+                           explicit finger pads below provide stable, measurable grasp contact. -->
+                      <site name="tcp" pos="0 0 0.1034" size="0.009" rgba="1 0.35 0.05 1" group="4"/>
+                      <body name="left_finger" pos="0 0 0.0584" gravcomp="1">
+                        <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
+                        <joint name="finger_joint1" axis="0 1 0" type="slide" range="0 0.04" armature="0"/>
+                        <geom mesh="leftfinger_mesh" class="robot_visual"/>
+                        <geom class="finger_pad"/>
+                      </body>
+                      <body name="right_finger" pos="0 0 0.0584" quat="0 0 0 1" gravcomp="1">
+                        <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
+                        <joint name="finger_joint2" axis="0 1 0" type="slide" range="0 0.04" armature="0"/>
+                        <geom mesh="rightfinger_mesh" class="robot_visual"/>
+                        <geom class="finger_pad"/>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+
+    <!-- Moving pallet. q=0 puts its centre at the training entry x=0.20 m. -->
+    <body name="pallet" pos="0.20 0.30 0.02">
+      <joint name="pallet_slide" type="slide" axis="1 0 0" range="-0.12 1.0" damping="100" armature="0"/>
+      <inertial pos="0 0 0.005" mass="2" diaginertia="0.012 0.010 0.018"/>
+      <geom name="pallet_geom" type="box" pos="0 0 0.005" size="0.11 0.13 0.005" material="pallet"
+        friction="1.0 0.02 0.001"/>
+    </body>
+
+    <!-- Free destination bowl; the pallet moves it through contact, as in the Isaac scene. -->
+    <body name="bowl" pos="0.20 0.30 0.032">
+      <freejoint name="bowl_free"/>
+      <inertial pos="0 0 0.025" mass="0.2" diaginertia="0.0012 0.0012 0.0018"/>
+      <geom name="bowl_base" type="box" pos="0 0 0.003" size="0.076 0.076 0.003" material="bowl"/>
+      <geom type="box" pos="0.073 0 0.031" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="0.06322 0.0365 0.031" euler="0 0 0.523599" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="0.0365 0.06322 0.031" euler="0 0 1.047198" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="0 0.073 0.031" euler="0 0 1.570796" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="-0.0365 0.06322 0.031" euler="0 0 2.094395" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="-0.06322 0.0365 0.031" euler="0 0 2.617994" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="-0.073 0 0.031" euler="0 0 3.141593" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="-0.06322 -0.0365 0.031" euler="0 0 3.665191" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="-0.0365 -0.06322 0.031" euler="0 0 4.188790" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="0 -0.073 0.031" euler="0 0 4.712389" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="0.0365 -0.06322 0.031" euler="0 0 5.235988" size="0.003 0.0226 0.025" material="bowl"/>
+      <geom type="box" pos="0.06322 -0.0365 0.031" euler="0 0 5.759587" size="0.003 0.0226 0.025" material="bowl"/>
+    </body>
+
+    <!-- Fixed shallow supply tray. -->
+    <body name="supply_bowl" pos="0.45 -0.10 0">
+      <geom type="box" pos="0 0 0.003" size="0.116 0.116 0.003" material="supply"/>
+      <geom type="box" pos="0.113 0 0.0135" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="0.09786 0.0565 0.0135" euler="0 0 0.523599" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="0.0565 0.09786 0.0135" euler="0 0 1.047198" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="0 0.113 0.0135" euler="0 0 1.570796" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="-0.0565 0.09786 0.0135" euler="0 0 2.094395" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="-0.09786 0.0565 0.0135" euler="0 0 2.617994" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="-0.113 0 0.0135" euler="0 0 3.141593" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="-0.09786 -0.0565 0.0135" euler="0 0 3.665191" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="-0.0565 -0.09786 0.0135" euler="0 0 4.188790" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="0 -0.113 0.0135" euler="0 0 4.712389" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="0.0565 -0.09786 0.0135" euler="0 0 5.235988" size="0.003 0.0333 0.0075" material="supply"/>
+      <geom type="box" pos="0.09786 -0.0565 0.0135" euler="0 0 5.759587" size="0.003 0.0333 0.0075" material="supply"/>
+    </body>
+
+    <body name="food" pos="0.45 -0.10 0.031">
+      <freejoint name="food_free"/>
+      <inertial pos="0 0 0" mass="0.03" diaginertia="0.0000048 0.0000048 0.0000048"/>
+      <geom name="food_geom" type="sphere" size="0.02" material="food" friction="1.5 0.01 0.0005"/>
+    </body>
+  </worldbody>
+
+  <equality>
+    <joint joint1="finger_joint1" joint2="finger_joint2" solimp="0.95 0.99 0.001" solref="0.005 1"/>
+  </equality>
+
+  <contact>
+    <exclude body1="link0" body2="link1"/>
+  </contact>
+
+  <actuator>
+    <general name="arm1" joint="joint1" dyntype="none" biastype="affine" ctrlrange="-2.8973 2.8973"
+      forcerange="-87 87" gainprm="400" biasprm="0 -400 -80"/>
+    <general name="arm2" joint="joint2" dyntype="none" biastype="affine" ctrlrange="-1.7628 1.7628"
+      forcerange="-87 87" gainprm="400" biasprm="0 -400 -80"/>
+    <general name="arm3" joint="joint3" dyntype="none" biastype="affine" ctrlrange="-2.8973 2.8973"
+      forcerange="-87 87" gainprm="400" biasprm="0 -400 -80"/>
+    <general name="arm4" joint="joint4" dyntype="none" biastype="affine" ctrlrange="-3.0718 -0.0698"
+      forcerange="-87 87" gainprm="400" biasprm="0 -400 -80"/>
+    <general name="arm5" joint="joint5" dyntype="none" biastype="affine" ctrlrange="-2.8973 2.8973"
+      forcerange="-12 12" gainprm="400" biasprm="0 -400 -80"/>
+    <general name="arm6" joint="joint6" dyntype="none" biastype="affine" ctrlrange="-0.0175 3.7525"
+      forcerange="-12 12" gainprm="400" biasprm="0 -400 -80"/>
+    <general name="arm7" joint="joint7" dyntype="none" biastype="affine" ctrlrange="-2.8973 2.8973"
+      forcerange="-12 12" gainprm="400" biasprm="0 -400 -80"/>
+    <general name="finger1" joint="finger_joint1" dyntype="none" biastype="affine" ctrlrange="0 0.04"
+      forcerange="-5 5" gainprm="2000" biasprm="0 -2000 -100"/>
+    <general name="finger2" joint="finger_joint2" dyntype="none" biastype="affine" ctrlrange="0 0.04"
+      forcerange="-5 5" gainprm="2000" biasprm="0 -2000 -100"/>
+    <position name="pallet_drive" joint="pallet_slide" kp="10000" kv="10000" ctrlrange="-0.12 1.0"/>
+  </actuator>
+
+  <keyframe>
+    <key name="isaac_home"
+      qpos="0 -0.569 0 -2.810 0 3.037 0.741 0.04 0.04 0 0.20 0.30 0.032 1 0 0 0 0.45 -0.10 0.031 1 0 0 0"
+      ctrl="0 -0.569 0 -2.810 0 3.037 0.741 0.04 0.04 0"/>
+  </keyframe>
+</mujoco>

@@ -62,6 +62,20 @@ def main(cfg: DictConfig):
 
     tu = _load_local_module("utils")
 
+    if cfg.init_checkpoint and cfg.resume_checkpoint:
+        raise ValueError("Set only one of init_checkpoint (warm start) or resume_checkpoint (full training resume).")
+    resume_state = None
+    resume_frames, resume_iteration = 0, -1
+    if cfg.resume_checkpoint:
+        resume_path = Path(cfg.resume_checkpoint)
+        resume_state = torch.load(resume_path, map_location="cpu", weights_only=False)
+        required = {"actor", "critic", "optim", "frames", "iteration"}
+        missing = required.difference(resume_state)
+        if missing:
+            raise ValueError(f"resume_checkpoint {resume_path} is missing keys: {sorted(missing)}")
+        resume_frames = int(resume_state["frames"])
+        resume_iteration = int(resume_state["iteration"])
+
     run_dir = Path(cfg.run.dir) if cfg.run.dir else new_run_dir("teachers", cfg.run.name)
     run_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = run_dir / "manifest.json"
@@ -72,10 +86,13 @@ def main(cfg: DictConfig):
             "git_commit": git_commit(),
             "config": OmegaConf.to_container(cfg, resolve=True),
             "init_checkpoint": cfg.init_checkpoint or None,
+            "resume_checkpoint": cfg.resume_checkpoint or None,
+            "resume_frames": resume_frames,
+            "resume_iteration": resume_iteration,
             "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "ended_at": None,
             "stop_reason": None,
-            "frames": 0,
+            "frames": resume_frames,
             "checkpoints": [],
         },
     )
@@ -89,6 +106,8 @@ def main(cfg: DictConfig):
     if compile_on:
         compile_mode = cfg.compile.compile_mode or ("default" if cudagraphs else "reduce-overhead")
     device = torch.device(cfg.env.device)
+    if float(cfg.loss.action_l1_coeff) < 0.0:
+        raise ValueError("loss.action_l1_coeff must be nonnegative")
     env = make_env(OmegaConf.to_container(cfg.env, resolve=True))
     num_envs = env.batch_size[0]
     frames_per_batch = num_envs * int(cfg.collector.rollout_steps)
@@ -101,6 +120,12 @@ def main(cfg: DictConfig):
             f"No iteration would run: collector.total_frames={cfg.collector.total_frames} is below frames_per_batch="
             f"{frames_per_batch} (env.num_envs x collector.rollout_steps). Set max_iterations or raise total_frames."
         )
+    start_iteration = resume_iteration + 1
+    if start_iteration >= total_iterations:
+        raise ValueError(
+            f"resume_checkpoint is already at iteration {resume_iteration} / frames {resume_frames}, "
+            f"but this run's absolute horizon is only {total_iterations} iterations."
+        )
     mini_batch_size = min(int(cfg.loss.mini_batch_size), frames_per_batch)
     print(
         "RUN_INFO "
@@ -110,6 +135,9 @@ def main(cfg: DictConfig):
                 "num_envs": num_envs,
                 "frames_per_batch": frames_per_batch,
                 "total_iterations": total_iterations,
+                "start_iteration": start_iteration,
+                "start_frames": resume_frames,
+                "remaining_iterations": total_iterations - start_iteration,
                 "max_episode_length": int(env.base_env._env.unwrapped.max_episode_length),
             }
         ),
@@ -120,6 +148,87 @@ def main(cfg: DictConfig):
         actor, critic = tu.make_teacher_models(env, cfg.network, device)
         if cfg.init_checkpoint:
             tu.load_teacher_weights(cfg.init_checkpoint, actor, critic, device)
+            if cfg.init_actor_scale is not None:
+                reset = False
+                with torch.no_grad():
+                    for name, parameter in actor.named_parameters():
+                        if name.endswith("state_independent_scale"):
+                            scale = torch.as_tensor(cfg.init_actor_scale, dtype=parameter.dtype, device=parameter.device)
+                            if scale.numel() == 1:
+                                parameter.fill_(float(scale.item()))
+                            elif tuple(scale.shape) == tuple(parameter.shape):
+                                parameter.copy_(scale)
+                            else:
+                                raise ValueError(
+                                    f"init_actor_scale has shape {tuple(scale.shape)}; expected a scalar or "
+                                    f"the actor action shape {tuple(parameter.shape)}"
+                                )
+                            reset = True
+                if not reset:
+                    raise RuntimeError(
+                        "init_actor_scale was set, but the actor has no state-independent scale parameter"
+                    )
+        elif resume_state is not None:
+            try:
+                actor.load_state_dict(resume_state["actor"])
+                critic.load_state_dict(resume_state["critic"])
+            except RuntimeError as error:
+                raise RuntimeError(
+                    f"resume_checkpoint {cfg.resume_checkpoint} does not match this run's network config: {error}"
+                ) from error
+        if cfg.loss.freeze_actor_scale:
+            frozen_scale = False
+            for name, parameter in actor.named_parameters():
+                if name.endswith("state_independent_scale"):
+                    parameter.requires_grad_(False)
+                    frozen_scale = True
+            if not frozen_scale:
+                raise RuntimeError("loss.freeze_actor_scale=true, but the actor has no state-independent scale parameter")
+        if cfg.loss.freeze_actor_base:
+            base_parameters = [
+                parameter for name, parameter in actor.named_parameters() if ".body.base." in name
+            ]
+            if not base_parameters:
+                raise RuntimeError("loss.freeze_actor_base=true requires a temporal residual actor")
+            for parameter in base_parameters:
+                parameter.requires_grad_(False)
+        if cfg.loss.train_actor_head_only:
+            body_parameters = [(name, parameter) for name, parameter in actor.named_parameters() if ".body." in name]
+            output_weights = [name for name, parameter in body_parameters if parameter.ndim == 2]
+            if not output_weights:
+                raise RuntimeError("loss.train_actor_head_only=true, but the actor body has no linear weights")
+            output_prefix = output_weights[-1].rsplit(".", 1)[0]
+            for name, parameter in body_parameters:
+                if not name.startswith(output_prefix + "."):
+                    parameter.requires_grad_(False)
+
+        reference_kl_on = bool(cfg.loss.reference_kl_coeff or cfg.loss.reference_mean_kl_coeff)
+        reference_actor = None
+        if reference_kl_on:
+            if not cfg.loss.reference_checkpoint:
+                raise ValueError(
+                    "A positive reference KL coefficient requires loss.reference_checkpoint to name a teacher checkpoint."
+                )
+            reference_actor = tu.load_teacher_actor(cfg.loss.reference_checkpoint, env, device)
+            reference_actor.eval().requires_grad_(False)
+            print(
+                "REFERENCE_POLICY "
+                + json.dumps(
+                    {
+                        "checkpoint": str(cfg.loss.reference_checkpoint),
+                        "kl_coeff": float(cfg.loss.reference_kl_coeff),
+                        "mean_kl_coeff": float(cfg.loss.reference_mean_kl_coeff),
+                        "action_weights": (
+                            list(cfg.loss.reference_action_weights)
+                            if cfg.loss.reference_action_weights is not None
+                            else None
+                        ),
+                        "actor_scale_frozen": bool(cfg.loss.freeze_actor_scale),
+                        "actor_head_only": bool(cfg.loss.train_actor_head_only),
+                    }
+                ),
+                flush=True,
+            )
         collector = Collector(
             env,
             actor,
@@ -174,12 +283,33 @@ def main(cfg: DictConfig):
             )
         else:
             optim = torch.optim.Adam(loss_module.parameters(), lr=cfg.optim.lr, eps=1e-5)
+        if resume_state is not None:
+            optim.load_state_dict(resume_state["optim"])
+            resume_state = None  # release the duplicate CPU state after it has been restored
 
         max_grad_norm = cfg.optim.max_grad_norm
 
         def update(batch):
             loss = loss_module(batch)
             total = loss["loss_objective"] + loss["loss_critic"] + loss["loss_entropy"]
+            if cfg.loss.action_l1_coeff:
+                action_l1 = tu.action_l1_penalty(batch.get("action"))
+                loss_action_l1 = float(cfg.loss.action_l1_coeff) * action_l1
+                total = total + loss_action_l1
+                loss.set("action_l1", action_l1)
+                loss.set("loss_action_l1", loss_action_l1)
+            if reference_actor is not None:
+                reference_kl, reference_mean_kl = tu.reference_policy_kl(
+                    actor, reference_actor, batch, action_weights=cfg.loss.reference_action_weights
+                )
+                loss_reference_kl = (
+                    cfg.loss.reference_kl_coeff * reference_kl
+                    + cfg.loss.reference_mean_kl_coeff * reference_mean_kl
+                )
+                total = total + loss_reference_kl
+                loss.set("reference_kl", reference_kl)
+                loss.set("reference_mean_kl", reference_mean_kl)
+                loss.set("loss_reference_kl", loss_reference_kl)
             optim.zero_grad(set_to_none=True)
             total.backward()
             torch.nn.utils.clip_grad_norm_(loss_module.parameters(), max_grad_norm)
@@ -281,10 +411,10 @@ def main(cfg: DictConfig):
     interval = int(cfg.checkpoint.interval_frames)
 
     data_iter = iter(collector)
-    frames_total, iteration, start = 0, -1, time.monotonic()
-    pbar = tqdm.tqdm(total=total_iterations, desc="iterations")
+    frames_total, iteration, start = resume_frames, resume_iteration, time.monotonic()
+    pbar = tqdm.tqdm(total=total_iterations, initial=start_iteration, desc="iterations")
     try:
-        for iteration in range(total_iterations):
+        for iteration in range(start_iteration, total_iterations):
             if stop["reason"] != "total_frames":
                 break
             if cfg.max_hours and time.monotonic() - start > cfg.max_hours * 3600:
@@ -316,7 +446,19 @@ def main(cfg: DictConfig):
                     loss = update(batch)
                     if graphed:
                         loss = loss.clone()
-                    for key in ("loss_objective", "loss_critic", "loss_entropy", "entropy", "kl_approx", "clip_fraction"):
+                    for key in (
+                        "loss_objective",
+                        "loss_critic",
+                        "loss_entropy",
+                        "loss_reference_kl",
+                        "loss_action_l1",
+                        "action_l1",
+                        "reference_kl",
+                        "reference_mean_kl",
+                        "entropy",
+                        "kl_approx",
+                        "clip_fraction",
+                    ):
                         if key in loss.keys():
                             loss_sums[key] = loss_sums.get(key, 0.0) + loss[key].detach().float().mean()
                     num_updates += 1

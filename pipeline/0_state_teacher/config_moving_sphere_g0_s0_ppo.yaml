@@ -1,0 +1,121 @@
+# G0-S0: original PPO backbone + speed-free GAP geometry + validated skill.
+#
+# PPO owns interception and must enter a stable 6D grasp basin.  The
+# controller-boundary option then performs only ALIGN->CLOSE->HOLD->LIFT.
+# Belt speed/contact/force are absent from actor and critic observations.
+defaults:
+  - config_moving_cube_c0t_gap_direct_rl
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereGapLift-v0
+  # 4096 x 16 x 40 x 20 point features overflow a 24 GiB 3090 during the
+  # full-batch GAE critic pass. 1024 was capacity-tested at ~14.24 GiB peak.
+  num_envs: 1024
+  arm: franka
+  food: moving_sphere
+  action_mode: ee_delta_pose
+  action_adapter: native
+  gripper_action_mode: continuous
+  ik_action_scale: 0.02
+  cameras: false
+  privileged_information: false
+  grasp_observation: false
+  kinematic_grasp_proxy_observation: false
+  temporal_history_steps: 0
+  position_history_steps: 10
+  grasp_point_observation: true
+  speed_free_observations: true
+  belt:
+    speed: 0.02
+    speed_noise: 0.50       # 0.01--0.03 m/s, environment DR only
+    place_window: 20.0      # fixed 0.40 m reach zone
+    pallet_start_range: [-0.04, 0.04]
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.02, 0.02]
+  destination_bowl_pos: [0.45, -0.10, 0.0]
+  destination_bowl_x_range: [0.45, 0.45]
+  destination_bowl_y_range: [-0.10, -0.10]
+  reward_set: sphere_gap_lift_v1
+  target_lift: 0.03
+  success_requires_home: false
+  robot_reset:
+    position_range: [-0.01, 0.01]
+    velocity_range: [0.0, 0.0]
+  grasp_pose_close_retract_option:
+    enabled: false
+  stable_sphere_grasp_option:
+    enabled: true
+    trigger_translation: 0.018
+    grasp_translation: 0.007
+    rotation_threshold: 0.15
+    alignment_steps: 4
+    close_steps: 16
+    hold_steps: 10
+    lift_steps: 30
+    lift_timeout_steps: 150
+    lift_height: 0.04
+    lift_tolerance: 0.003
+    align_position_gain: 4.0
+    position_gain: 1.5
+    rotation_gain: 0.5
+    max_align_position_step: 0.008
+    max_position_step: 0.004
+    max_rotation_step: 0.01
+    close_action: -0.15
+
+network:
+  architecture: grasp_point_gru
+  actor_in_keys: &speed_free_keys
+    - [proprio, ee_pos]
+    - [proprio, ee_quat]
+    - [proprio, gripper_pos]
+    - [proprio, joint_pos_rel]
+    - [proprio, last_action]
+    - [grasp_guidance, points_ee]
+    - [grasp_guidance, best_pose_delta]
+    - [position_history, position_action]
+  critic_in_keys: *speed_free_keys
+  grasp_in_key: [grasp_guidance, points_ee]
+  temporal_in_key: [position_history, position_action]
+  point_hidden: 64
+  temporal_hidden: 64
+
+init_checkpoint: null
+init_actor_scale: null
+resume_checkpoint: null
+
+collector:
+  rollout_steps: 16
+  total_frames: 20_000_000
+
+optim:
+  lr: 3.0e-4
+  anneal_lr: true
+
+loss:
+  entropy_coeff: 0.003
+  mini_batch_size: 8192
+  freeze_actor_scale: false
+  freeze_actor_base: false
+  train_actor_head_only: false
+  reference_checkpoint: null
+  reference_kl_coeff: 0.0
+  reference_mean_kl_coeff: 0.0
+
+checkpoint:
+  interval_frames: 2_000_000
+
+worker:
+  enabled: false
+
+early_stop:
+  success_rate: null
+  consecutive_evals: 1
+
+logger:
+  backend: null
+  exp_name: moving_sphere_g0_s0_ppo
+
+run:
+  name: moving_sphere_g0_s0_ppo_1024_no_rtx

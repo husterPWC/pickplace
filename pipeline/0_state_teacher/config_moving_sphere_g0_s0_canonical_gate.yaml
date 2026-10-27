@@ -1,0 +1,46 @@
+# G0-S0c: symmetry-aware sphere gate before restoring the full curriculum.
+#
+# The task keeps the established 40x20 grasp tensor shape, but all slots carry
+# one canonical top-down yaw.  This removes the physically meaningless sphere
+# yaw choice from the reward, actor guidance, and option trigger.  The first
+# gate intentionally fixes the slow belt and narrows reset noise; speed remains
+# absent from actor and critic inputs.  Strict success is still dual contact,
+# stable coupling, and a true 3 cm sphere lift.
+defaults:
+  - config_moving_sphere_g0_s0_ppo
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereCanonicalGapLift-v0
+  belt:
+    speed: 0.01
+    speed_noise: 0.0
+    place_window: 40.0
+    pallet_start_range: [0.0, 0.0]
+    bowl_offset_x: [0.0, 0.0]
+    bowl_offset_y: [0.0, 0.0]
+  robot_reset:
+    position_range: [-0.002, 0.002]
+    velocity_range: [0.0, 0.0]
+
+network:
+  # exp(-3) ~= 0.05 normalized-action std, or roughly 1 mm before
+  # tanh at the 2 cm Cartesian action scale.  The failed G0-S0 run started at
+  # std=1.0 and still had 0.58--0.73 arm std at 14 M frames.
+  log_std_init: -3.0
+
+collector:
+  total_frames: 2_000_000
+
+loss:
+  entropy_coeff: 0.0
+  freeze_actor_scale: true
+
+checkpoint:
+  interval_frames: 250_000
+
+worker:
+  enabled: false
+
+run:
+  name: moving_sphere_g0_s0c_canonical_gate_1024_no_rtx

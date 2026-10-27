@@ -1,0 +1,73 @@
+# G0-S0e: validated geometry interceptor is the nominal policy; PPO learns
+# only a millimetre-scale correction.  Actor inputs remain speed/contact/
+# force/tactile/current-free.  Strict success remains a true 3 cm sphere lift.
+defaults:
+  - config_moving_sphere_g0_s0_canonical_gate
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereResidualGapLift-v0
+  reward_set: sphere_residual_lift_v1
+  stable_sphere_grasp_option:
+    enabled: false
+  stable_sphere_residual_skill:
+    enabled: true
+    intercept_x: 0.45
+    intercept_lead_distance: 0.08
+    hover_height: 0.08
+    hover_translation_threshold: 0.012
+    grasp_translation_threshold: 0.007
+    rotation_threshold: 0.15
+    alignment_steps: 4
+    close_steps: 16
+    hold_steps: 10
+    lift_steps: 30
+    lift_timeout_steps: 150
+    lift_height: 0.04
+    lift_tolerance: 0.003
+    position_gain: 1.5
+    align_position_gain: 4.0
+    rotation_gain: 0.5
+    max_hover_position_step: 0.02
+    max_hover_rotation_step: 0.02
+    align_fine_distance: 0.02
+    max_align_position_step: 0.02
+    max_align_fine_position_step: 0.008
+    max_position_step: 0.004
+    max_rotation_step: 0.01
+    close_action: -0.15
+    translation_alpha: 0.45
+    rotation_alpha: 0.35
+    max_translation_jump: 0.02
+    max_rotation_jump: 0.35
+    stable_translation: 0.004
+    stable_rotation: 0.08
+    stable_steps: 4
+    rotation_weight: 0.05
+    switch_margin: 0.01
+    # At 0.02 action scale these cap PPO corrections at 2 mm translation and
+    # 1 mrad rotation per control step.  Fingers are never residual-controlled.
+    translation_residual_limit: 0.10
+    rotation_residual_limit: 0.05
+
+network:
+  # exp(-2.3) ~= 0.10 raw residual std.  Combined with the transform limit,
+  # initial Cartesian residual exploration is about 0.2 mm.
+  log_std_init: -2.3
+
+collector:
+  total_frames: 2_000_000
+
+loss:
+  entropy_coeff: 0.0
+  freeze_actor_scale: true
+  action_l1_coeff: 0.002
+
+checkpoint:
+  interval_frames: 250_000
+
+worker:
+  enabled: false
+
+run:
+  name: moving_sphere_g0_s0e_residual_baseline_1024_no_rtx

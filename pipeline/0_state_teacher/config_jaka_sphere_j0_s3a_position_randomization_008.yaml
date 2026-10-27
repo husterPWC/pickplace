@@ -1,0 +1,22 @@
+# JAKA J0-S3a: preserve the accepted fixed 0.08 m/s J0-S2 controller and
+# introduce only small initial pallet/sphere-position perturbations.  Speed,
+# robot reset, object geometry, and rewards remain unchanged so failures can be
+# attributed to spatial robustness rather than a mixed curriculum change.
+defaults:
+  - config_jaka_sphere_j0_s2_speed_008
+  - _self_
+
+env:
+  belt:
+    pallet_start_range: [-0.02, 0.02]
+    bowl_offset_x: [-0.01, 0.01]  # moving-sphere relative X offset (legacy name)
+    bowl_offset_y: [-0.01, 0.01]  # moving-sphere relative Y offset (legacy name)
+
+collector:
+  total_frames: 1_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: jaka_zu5_ag95_sphere_j0_s3a_position_randomization_008_1024_no_rtx

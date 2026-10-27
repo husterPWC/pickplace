@@ -1,0 +1,35 @@
+# Reconstructed first stage of the published teacher's curriculum.
+#
+# The published v3c policy was not trained from scratch: its lineage starts with a successful simple_v2 policy
+# (98% deterministic evaluation in the author's notes).  The original run was named "600M" and the downstream
+# stages used its 390 M-frame checkpoint.  We retain that 600 M-frame ceiling, but stop after four consecutive
+# evaluations at >=97% so a sufficiently strong initialization is not trained longer than needed.
+#
+# Launch through scripts/run_teacher_curriculum_local.sh so the local 3090/no-RTX overrides and artifact path are
+# applied consistently.
+defaults:
+  - config
+  - _self_
+
+env:
+  reward_set: simple_v2
+  success_requires_home: false
+  robot_reset:
+    position_range: [-0.02, 0.02]
+    velocity_range: [0.0, 0.0]
+
+init_checkpoint: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 600_000_000
+
+optim:
+  lr: 3.0e-4
+
+early_stop:
+  success_rate: 0.97
+  consecutive_evals: 4
+
+logger:
+  exp_name: state_teacher_repro_v2

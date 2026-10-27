@@ -1,0 +1,57 @@
+#usda 1.0
+(
+    customLayerData = {
+        string creator = "URDF USD Converter v0.1.3"
+    }
+    doc = """Generated from Composed Stage of root layer /tmp/tmpq7vtrsf1/jaka_zu5.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_zu5_sss6s9gv/usdex_zu5/jaka_zu5.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_zu5_sss6s9gv/temp_zu5/zu5.usd
+
+
+Generated from Composed Stage of root layer /data/CodePWC/pickplace/assets/models/manipulators/Zu5/usd/zu5/payloads/base.usd
+"""
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Scope "Materials"
+{
+    def Material "zu5_light_grey"
+    {
+        color3f inputs:diffuseColor = (0.6866875, 0.6866875, 0.6866875)
+        float inputs:metallic = 0
+        float inputs:opacity = 1
+        float inputs:roughness = 0.5
+        token inputs:wrapMode = "repeat"
+        token outputs:displacement (
+            displayGroup = "Outputs"
+        )
+        prepend token outputs:displacement.connect = </Materials/zu5_light_grey/PreviewSurface.outputs:displacement>
+        token outputs:surface (
+            displayGroup = "Outputs"
+        )
+        prepend token outputs:surface.connect = </Materials/zu5_light_grey/PreviewSurface.outputs:surface>
+        token outputs:volume (
+            displayGroup = "Outputs"
+        )
+
+        def Shader "PreviewSurface" (
+            apiSchemas = ["NodeDefAPI"]
+        )
+        {
+            token info:id = "UsdPreviewSurface"
+            prepend color3f inputs:diffuseColor.connect = </Materials/zu5_light_grey.inputs:diffuseColor>
+            prepend float inputs:metallic.connect = </Materials/zu5_light_grey.inputs:metallic>
+            prepend float inputs:opacity.connect = </Materials/zu5_light_grey.inputs:opacity>
+            prepend float inputs:roughness.connect = </Materials/zu5_light_grey.inputs:roughness>
+            token outputs:displacement
+            token outputs:surface
+        }
+    }
+}
+

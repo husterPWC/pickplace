@@ -1,0 +1,39 @@
+# Sphere S1: warm-start S0 and learn placement into the fixed bowl.
+defaults:
+  - config_moving_sphere_s0_lift
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereStaticBowl-v0
+  food: moving_sphere
+  reward_set: moving_sphere_v1
+  reward_weights:
+    return_home: 0.0
+  success_requires_home: false
+  belt:
+    speed: 0.06
+    speed_noise: 0.25
+    place_window: 6.6666667
+    pallet_start_range: [-0.04, 0.04]
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.02, 0.02]
+
+init_checkpoint: null
+init_actor_scale: [-1.7, -1.7, -1.2, -1.5, -1.5, -1.5, -1.0]
+resume_checkpoint: null
+
+collector:
+  total_frames: 60_000_000
+
+optim:
+  lr: 1.0e-4
+  anneal_lr: true
+
+checkpoint:
+  interval_frames: 2_000_000
+
+logger:
+  exp_name: moving_sphere_s1_place
+
+run:
+  name: moving_sphere_s1_place_4096_no_rtx

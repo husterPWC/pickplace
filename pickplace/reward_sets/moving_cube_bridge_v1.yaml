@@ -1,0 +1,8 @@
+# Contact-free close-to-lift bridge.  Retain the successful C0u closure
+# shaping and add dense progress for only a 5 mm micro-lift.
+reach_food: 2.0
+grasp: 12.0
+grasp_lift: 100.0
+success: 250.0
+action_rate: -0.005
+joint_vel: -0.0005

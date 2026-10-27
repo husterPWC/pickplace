@@ -1,0 +1,27 @@
+# G0-S2d: retain G0-S2c's validated 0.08 m/s contact dynamics while adding
+# only modest initial-position variation.  Speed, controller gains, rewards,
+# robot reset, and strict 7 mm / true 3 cm gates stay frozen.
+defaults:
+  - config_moving_sphere_g0_s2c_align_follow_speed_008
+  - _self_
+
+env:
+  belt:
+    # Carrier start varies by +/-2 cm around G0-S2c's -0.38 m setting.
+    pallet_start_range: [-0.40, -0.36]
+    # The sphere can move independently by +/-1 cm along/across the belt.
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.01, 0.01]
+    pallet:
+      travel_lower: -0.44
+
+# Short warm-start adaptation.  Independent 64/256-env evaluations select
+# the checkpoint; this is an upper bound, not a requirement to use final.
+collector:
+  total_frames: 1_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: moving_sphere_g0_s2d_position_randomization_008_1024_no_rtx

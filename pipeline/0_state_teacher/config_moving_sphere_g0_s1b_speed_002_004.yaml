@@ -1,0 +1,22 @@
+# G0-S1b bridge: overlap the accepted G0-S1 speed domain with the failed
+# direct G0-S2 domain.  About 69% of deterministic episodes already succeed
+# at initialization, so PPO receives genuine strict-lift positives while it
+# learns the 0.03--0.04 m/s boundary.  Speed remains environment-only DR.
+defaults:
+  - config_moving_sphere_g0_s1_speed_001_003
+  - _self_
+
+env:
+  belt:
+    speed: 0.03
+    speed_noise: 0.3333333333333333  # uniform 0.02--0.04 m/s
+    place_window: 13.333333333333334 # nominal 0.40 m spatial reach zone
+
+collector:
+  total_frames: 2_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: moving_sphere_g0_s1b_speed_002_004_1024_no_rtx

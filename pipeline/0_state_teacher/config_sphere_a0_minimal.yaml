@@ -1,0 +1,103 @@
+# A0: minimal learnability gate before any parallel long run.
+# Four environments, fixed low speed, physically calibrated near-grasp reset,
+# no action-transforming option, strict dual-contact + true 3 cm lift success.
+defaults:
+  - config
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereA0Lift-v0
+  num_envs: 4
+  arm: franka
+  food: moving_sphere
+  action_mode: ee_delta_pose
+  action_adapter: native
+  gripper_action_mode: continuous
+  ik_action_scale: 0.02
+  cameras: false
+  privileged_information: false
+  grasp_observation: false
+  temporal_history_steps: 0
+  position_history_steps: 0
+  grasp_point_observation: true
+  speed_free_observations: true
+  belt:
+    speed: 0.01
+    speed_noise: 0.0
+    place_window: 40.0
+    # entry_x=0.20 m, so this places the sphere at x~=0.39 m beneath the
+    # measured pre-grasp TCP. Small nonzero DR prevents exact-state memorising.
+    pallet_start_range: [0.187, 0.193]
+    bowl_offset_x: [-0.002, 0.002]
+    bowl_offset_y: [-0.003, 0.003]
+  destination_bowl_pos: [0.45, -0.10, 0.0]
+  destination_bowl_x_range: [0.45, 0.45]
+  destination_bowl_y_range: [-0.10, -0.10]
+  reward_set: sphere_a0_lift_v1
+  target_lift: 0.03
+  success_requires_home: false
+  robot_reset:
+    position_range: [-0.005, 0.005]
+    velocity_range: [0.0, 0.0]
+  grasp_pose_close_retract_option:
+    enabled: false
+
+network:
+  architecture: mlp
+  actor_in_keys: &a0_keys
+    - [proprio, ee_pos]
+    - [proprio, ee_quat]
+    - [proprio, gripper_pos]
+    - [proprio, joint_pos_rel]
+    - [proprio, last_action]
+    - [grasp_guidance, best_pose_delta]
+  critic_in_keys: *a0_keys
+  hidden: [256, 256]
+  # sigma~=0.20 -> roughly 4 mm/rad Cartesian exploration per action at the
+  # 0.02 action scale: broad enough to discover descent/lift, not full-range.
+  log_std_init: -1.6
+
+init_checkpoint: null
+resume_checkpoint: null
+
+collector:
+  rollout_steps: 64
+  total_frames: 500_000
+
+max_iterations: null
+max_hours: 1.0
+
+optim:
+  lr: 3.0e-4
+  anneal_lr: false
+  max_grad_norm: 1.0
+
+loss:
+  gamma: 0.99
+  gae_lambda: 0.95
+  ppo_epochs: 8
+  mini_batch_size: 256
+  clip_epsilon: 0.2
+  entropy_coeff: 0.003
+  critic_coeff: 0.5
+  shifted_gae: true
+
+reward_scale: 1.0
+
+checkpoint:
+  interval_frames: 50_000
+
+worker:
+  enabled: false
+
+early_stop:
+  success_rate: null
+  consecutive_evals: 1
+
+logger:
+  backend: null
+  exp_name: sphere_a0_minimal
+
+run:
+  dir: null
+  name: sphere_a0_minimal_4env_no_rtx

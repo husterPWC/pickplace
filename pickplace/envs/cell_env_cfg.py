@@ -20,7 +20,7 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.sensors import CameraCfg, FrameTransformerCfg
+from isaaclab.sensors import CameraCfg, ContactSensorCfg, FrameTransformerCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg
 from isaaclab.utils.configclass import configclass
@@ -29,6 +29,10 @@ from isaaclab_physx.physics import PhysxCfg
 from isaaclab_physx.sim.schemas import CollisionPropertiesCfg
 
 from pickplace.arms import FRANKA_CFG, ArmCfg
+from pickplace.actions import (
+    CoupledGripperPositionActionCfg,
+    PersistentDifferentialInverseKinematicsActionCfg,
+)
 from pickplace.assets.scene_assets import make_bowl_cfg, make_pallet_cfg
 from pickplace.assets.usd_builders import BowlGeometry
 from pickplace.belt import BELT_COLOR, BeltCfg
@@ -84,6 +88,8 @@ class FoodCellSceneCfg(InteractiveSceneCfg):
     wrist_cam: CameraCfg | None = None
     overview_cam: CameraCfg | None = None
     render_cam: CameraCfg | None = None
+    left_finger_contact: ContactSensorCfg | None = None
+    right_finger_contact: ContactSensorCfg | None = None
     """Wide third-person camera for videos; never part of the observations (see ``render_camera``)."""
 
     # Plain box table, top surface at z = 0 in the cell frame. It spans x in [-0.30, 1.20] and y in [-0.55, 0.55],
@@ -112,7 +118,7 @@ class FoodCellSceneCfg(InteractiveSceneCfg):
 @configclass
 class ActionsCfg:
     arm_action: object = MISSING
-    gripper_action: base_mdp.BinaryJointPositionActionCfg = MISSING
+    gripper_action: object = MISSING
 
 
 @configclass
@@ -147,6 +153,14 @@ class ObservationsCfg:
         overview_rgb = ObsTerm(
             func=mdp.image_float,
             params={"sensor_cfg": SceneEntityCfg("overview_cam"), "data_type": "rgb"},
+        )
+        wrist_depth = ObsTerm(
+            func=mdp.depth_meters,
+            params={"sensor_cfg": SceneEntityCfg("wrist_cam")},
+        )
+        overview_depth = ObsTerm(
+            func=mdp.depth_meters,
+            params={"sensor_cfg": SceneEntityCfg("overview_cam")},
         )
 
         def __post_init__(self):
@@ -225,6 +239,7 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
     food: FoodSourceCfg = RigidFoodCfg()
     belt: BeltCfg = BeltCfg()
     action_mode: ActionMode = "ee_delta_pose"
+    gripper_action_mode: Literal["binary", "continuous"] = "binary"
     stiff_arm: bool = False
     """Use the arm's high-PD asset in ``joint_pos`` mode, so commanded joint targets are tracked rather
     than drooping. Set automatically when an action adapter converts into joint targets."""
@@ -234,6 +249,23 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
     """Number of most recent camera frames stacked along the channel axis of each pixel observation.
     1 = single frame (H x W x 3); 3 = H x W x 9, oldest frame first. History resets per env."""
     privileged_information: bool = False
+    camera_depth: bool = False
+    """Add metric depth for both policy cameras. RGB-only remains the default
+    so historical checkpoints and datasets keep byte-for-byte observation specs."""
+    grasp_observation: bool = True
+    """Expose the legacy geometric ``is_grasped`` observation.  C0m disables
+    this channel so its policy cannot depend on a simulator-only grasp flag."""
+    temporal_history_steps: int = 0
+    """Dynamic-task state/action history length.  Zero disables the extra
+    observation; values >=2 are configured by the moving-cube subclass."""
+    kinematic_grasp_proxy_observation: bool = False
+    """Expose a pose/aperture-only grasp proxy for contact-free transfer."""
+    position_history_steps: int = 0
+    """Position/finger/action history length; contains no explicit velocity."""
+    grasp_point_observation: bool = False
+    """Expose TCP-frame grasp-candidate point sets for GAP-style policies."""
+    speed_free_observations: bool = False
+    """Remove all explicit velocity and conveyor-speed leaves from observations."""
     robot_reset: dict = {"position_range": (-0.02, 0.02), "velocity_range": (0.0, 0.0)}
     """Reset randomization added to the arm joints' default pose (``events.reset_robot_joints``,
     ``base_mdp.reset_joints_by_offset``): ``position_range`` [rad], ``velocity_range`` [rad/s], each biased onto
@@ -347,11 +379,23 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
             gpu_total_aggregate_pairs_capacity=2 * 1024 * 1024,
             friction_correlation_distance=0.00625,
         )
-        validate_observation_flags(self.cameras, self.privileged_information)
+        validate_observation_flags(
+            self.cameras, self.privileged_information, task_object_observation=self.grasp_point_observation
+        )
         if not isinstance(self.frame_stack, int) or self.frame_stack < 1:
             raise ValueError(f"frame_stack must be an int >= 1, got {self.frame_stack!r}.")
+        if not isinstance(self.temporal_history_steps, int) or self.temporal_history_steps == 1 or self.temporal_history_steps < 0:
+            raise ValueError(
+                f"temporal_history_steps must be 0 (off) or an int >= 2, got {self.temporal_history_steps!r}."
+            )
+        if not isinstance(self.position_history_steps, int) or self.position_history_steps == 1 or self.position_history_steps < 0:
+            raise ValueError(
+                f"position_history_steps must be 0 (off) or an int >= 2, got {self.position_history_steps!r}."
+            )
         if self.action_mode not in ("ee_delta_pose", "joint_pos"):
             raise ValueError(f"Unknown action_mode {self.action_mode!r}; use 'ee_delta_pose' or 'joint_pos'.")
+        if self.gripper_action_mode not in ("binary", "continuous"):
+            raise ValueError("gripper_action_mode must be 'binary' or 'continuous'")
         if self.food.num_items != 1:
             raise NotImplementedError("Only num_items=1 is implemented in sub-project 1.")
         zone = self.belt.zone()
@@ -375,7 +419,11 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
         slowest = belt.speed * (1.0 - belt.speed_noise)
         # safety cap only: from the earliest possible start the bowl leaves the zone (a terminated failure) before this
         longest_path = belt.entry_margin - belt.pallet_start_range[0] - belt.bowl_offset_x[0] + zone.length + 0.1
-        self.episode_length_s = longest_path / slowest + 2.0
+        if belt.visual_upstream_extension < 0.0:
+            raise ValueError("belt.visual_upstream_extension must be non-negative")
+        if belt.episode_completion_margin <= 0.0:
+            raise ValueError("belt.episode_completion_margin must be positive")
+        self.episode_length_s = longest_path / slowest + belt.episode_completion_margin
 
         self._build_scene(zone)
         self._build_actions()
@@ -389,6 +437,8 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
     # ------------------------------------------------------------------
     def _build_scene(self, zone) -> None:
         arm, belt, s = self.arm, self.belt, self.scene
+        base_prim = arm.base_link_prim_path or arm.base_link_name
+        ee_prim = arm.ee_body_prim_path or arm.ee_body_name
         # The high-PD asset is Isaac Lab's variant for *position-target* control. ee_delta_pose needs it for
         # the IK targets; joint_pos only needs it when something commands joint targets precisely, which is
         # what stiff_arm says. Left off by default, the plain gains droop ~0.23 rad under gravity.
@@ -396,13 +446,13 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
         robot = arm.ik_robot if stiff else arm.robot
         s.robot = robot.replace(prim_path="{ENV_REGEX_NS}/Robot")
         s.ee_frame = FrameTransformerCfg(
-            prim_path=f"{{ENV_REGEX_NS}}/Robot/{arm.base_link_name}",
+            prim_path=f"{{ENV_REGEX_NS}}/Robot/{base_prim}",
             debug_vis=False,
             target_frames=[
                 FrameTransformerCfg.FrameCfg(
-                    prim_path=f"{{ENV_REGEX_NS}}/Robot/{arm.ee_body_name}",
+                    prim_path=f"{{ENV_REGEX_NS}}/Robot/{ee_prim}",
                     name="end_effector",
-                    offset=OffsetCfg(pos=arm.tcp_offset),
+                    offset=OffsetCfg(pos=arm.tcp_offset, rot=arm.tcp_rot_xyzw),
                 )
             ],
         )
@@ -417,7 +467,7 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
         )
         s.belt_visual = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/BeltVisual",
-            init_state=AssetBaseCfg.InitialStateCfg(pos=(belt.zone_center_x, belt.belt_y, base_z - 0.004)),
+            init_state=AssetBaseCfg.InitialStateCfg(pos=(belt.visual_center_x(), belt.belt_y, base_z - 0.004)),
             spawn=sim_utils.CuboidCfg(
                 size=(belt.visual_length(), 2 * belt.belt_half_width, 0.004),
                 visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=BELT_COLOR),
@@ -428,13 +478,18 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
             pinhole = sim_utils.PinholeCameraCfg(
                 focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.05, 3.0)
             )
+            camera_data_types = ["rgb"]
+            if self.camera_depth:
+                camera_data_types.append("distance_to_image_plane")
             s.wrist_cam = CameraCfg(
-                prim_path=f"{{ENV_REGEX_NS}}/Robot/{arm.ee_body_name}/wrist_cam",
-                update_period=0.0, height=h, width=w, data_types=["rgb"], spawn=pinhole, offset=arm.wrist_cam_offset,
+                prim_path=f"{{ENV_REGEX_NS}}/Robot/{ee_prim}/wrist_cam",
+                update_period=0.0, height=h, width=w, data_types=camera_data_types,
+                spawn=pinhole, offset=arm.wrist_cam_offset,
             )
             s.overview_cam = CameraCfg(
                 prim_path="{ENV_REGEX_NS}/overview_cam",
-                update_period=0.0, height=h, width=w, data_types=["rgb"], spawn=pinhole,
+                update_period=0.0, height=h, width=w, data_types=camera_data_types,
+                spawn=pinhole,
                 offset=CameraCfg.OffsetCfg(
                     pos=self.overview_cam_eye,
                     rot=look_at_quat_xyzw(self.overview_cam_eye, self.overview_cam_target),
@@ -463,25 +518,44 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
 
     def _build_actions(self) -> None:
         arm = self.arm
+        gripper_control_joints = arm.gripper_control_joint_names or arm.gripper_joint_names
         if self.action_mode == "ee_delta_pose":
-            self.actions.arm_action = DifferentialInverseKinematicsActionCfg(
+            ik_action_cfg = (
+                PersistentDifferentialInverseKinematicsActionCfg
+                if arm.persistent_ik_target
+                else DifferentialInverseKinematicsActionCfg
+            )
+            body_offset = None
+            if arm.ik_uses_tcp_offset:
+                body_offset = ik_action_cfg.OffsetCfg(
+                    pos=arm.tcp_offset, rot=arm.tcp_rot_xyzw
+                )
+            self.actions.arm_action = ik_action_cfg(
                 asset_name="robot",
                 joint_names=arm.arm_joint_names,
                 body_name=arm.ee_body_name,
                 controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
                 scale=arm.ik_action_scale,
-                body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=arm.tcp_offset),
+                body_offset=body_offset,
             )
         else:
             self.actions.arm_action = base_mdp.JointPositionActionCfg(
                 asset_name="robot", joint_names=arm.arm_joint_names, scale=arm.joint_action_scale, use_default_offset=True
             )
-        self.actions.gripper_action = base_mdp.BinaryJointPositionActionCfg(
-            asset_name="robot",
-            joint_names=arm.gripper_joint_names,
-            open_command_expr={name: arm.gripper_open for name in arm.gripper_joint_names},
-            close_command_expr={name: arm.gripper_closed for name in arm.gripper_joint_names},
-        )
+        if self.gripper_action_mode == "continuous":
+            self.actions.gripper_action = CoupledGripperPositionActionCfg(
+                asset_name="robot",
+                joint_names=gripper_control_joints,
+                open_pos=arm.gripper_open,
+                closed_pos=arm.gripper_closed,
+            )
+        else:
+            self.actions.gripper_action = base_mdp.BinaryJointPositionActionCfg(
+                asset_name="robot",
+                joint_names=gripper_control_joints,
+                open_command_expr={name: arm.gripper_open for name in gripper_control_joints},
+                close_command_expr={name: arm.gripper_closed for name in gripper_control_joints},
+            )
 
     def _build_observations(self) -> None:
         arm, obs = self.arm, self.observations
@@ -490,10 +564,21 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
         # resolution compare the regex in joint_names against the now-concrete joint_ids and raise
         # "Both 'joint_names' and 'joint_ids' are specified, and are not consistent." (verified at
         # runtime on the Spark; see task-4-report.md).
+        if arm.policy_joint_names is not None:
+            obs.proprio.joint_pos_rel.params["asset_cfg"] = SceneEntityCfg(
+                "robot", joint_names=arm.policy_joint_names
+            )
+            obs.proprio.joint_vel_rel.params["asset_cfg"] = SceneEntityCfg(
+                "robot", joint_names=arm.policy_joint_names
+            )
         obs.proprio.gripper_pos.params["asset_cfg"] = SceneEntityCfg("robot", joint_names=arm.gripper_joint_names)
         if not self.cameras:
             obs.pixels = None
-        elif self.frame_stack > 1:
+        else:
+            if not self.camera_depth:
+                obs.pixels.wrist_depth = None
+                obs.pixels.overview_depth = None
+        if self.cameras and self.frame_stack > 1:
             for name, sensor in (("wrist_rgb", "wrist_cam"), ("overview_rgb", "overview_cam")):
                 setattr(
                     obs.pixels,
@@ -503,12 +588,32 @@ class FoodCellEnvCfg(ManagerBasedRLEnvCfg):
                         params={"sensor_cfg": SceneEntityCfg(sensor), "data_type": "rgb", "frame_stack": self.frame_stack},
                     ),
                 )
+            if self.camera_depth:
+                for name, sensor in (
+                    ("wrist_depth", "wrist_cam"),
+                    ("overview_depth", "overview_cam"),
+                ):
+                    setattr(
+                        obs.pixels,
+                        name,
+                        ObsTerm(
+                            func=mdp.stacked_image_float,
+                            params={
+                                "sensor_cfg": SceneEntityCfg(sensor),
+                                "data_type": "distance_to_image_plane",
+                                "frame_stack": self.frame_stack,
+                            },
+                        ),
+                    )
         if self.privileged_information:
-            obs.privileged.is_grasped.params.update(
-                robot_cfg=SceneEntityCfg("robot", joint_names=arm.gripper_joint_names),
-                open_pos=arm.gripper_open,
-                closed_pos=arm.gripper_closed,
-            )
+            if self.grasp_observation:
+                obs.privileged.is_grasped.params.update(
+                    robot_cfg=SceneEntityCfg("robot", joint_names=arm.gripper_joint_names),
+                    open_pos=arm.gripper_open,
+                    closed_pos=arm.gripper_closed,
+                )
+            else:
+                obs.privileged.is_grasped = None
             # deepcopy: a single food cfg instance (and its term objects) may build multiple envs.
             for name, term in self.food.privileged_obs.items():
                 setattr(obs.privileged, name, copy.deepcopy(term))

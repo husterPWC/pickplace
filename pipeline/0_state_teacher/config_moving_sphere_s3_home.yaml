@@ -1,0 +1,35 @@
+# Sphere S3: target 0.10 m/s operation and the full release + Home contract.
+defaults:
+  - config_moving_sphere_s2_speed
+  - _self_
+
+env:
+  belt:
+    speed: 0.10
+    speed_noise: 0.05       # 0.095--0.105 m/s
+    place_window: 4.0
+    pallet_start_range: [-0.08, 0.08]
+    bowl_offset_x: [-0.02, 0.02]
+    bowl_offset_y: [-0.04, 0.04]
+  reward_weights:
+    return_home: 10.0
+  success_requires_home: true
+
+init_checkpoint: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 50_000_000
+
+optim:
+  lr: 5.0e-5
+
+early_stop:
+  success_rate: 0.90
+  consecutive_evals: 3
+
+logger:
+  exp_name: moving_sphere_s3_home
+
+run:
+  name: moving_sphere_s3_home_4096_no_rtx

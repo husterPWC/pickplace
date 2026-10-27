@@ -1,0 +1,21 @@
+# JAKA J0-S1: warm-start the accepted 0.01--0.03 m/s ZU5+AG95 policy
+# and widen only the conveyor-speed domain.  Speed remains environment-only
+# randomization and is absent from actor/critic observations.
+defaults:
+  - config_jaka_sphere_j0_s0_residual_001_003
+  - _self_
+
+env:
+  belt:
+    speed: 0.04
+    speed_noise: 0.25       # uniform 0.03--0.05 m/s
+    place_window: 10.0      # preserve the same 0.40 m interception corridor
+
+collector:
+  total_frames: 2_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: jaka_zu5_ag95_sphere_j0_s1_residual_003_005_1024_no_rtx

@@ -23,6 +23,35 @@ action, clipped to the action bounds (explicit, not `AdditiveGaussianModule`, wh
 Prints `COLLECT_INFO`, one `PROGRESS` line per batch, `COLLECT` (the manifest) and `COLLECT_DONE`.
 Cost: 2 cameras x 84 x 84 x 3 uint8 = 42 KB/frame, i.e. ~42 GB per million frames.
 
+### G2 moving-sphere visual collection
+
+G2 extends the historical RGB shard format with metric depth and an explicit
+student/teacher boundary.  Use the frozen G1 checkpoint through the guarded
+server wrapper (not a hand-written `collect.py` command):
+
+    PICKPLACE_PHYSICAL_GPU=<server-gpu> scripts/run_g2_collection_server.sh smoke
+
+The wrapper first validates the G1 checkpoint, collects 4096 frames, then runs
+`scripts/verify_g2_shard.py` and writes `g2_rgbd_preview.png`.  Only after that
+passes should collection advance to `pilot` (100k frames) and `full` (1M
+frames).  Set `G2_SEED`, `G2_NAME`, or `G2_OUT` to create independent shards.
+`G2_DRY_RUN=1` validates and prints the resolved command without Isaac.
+
+In addition to both RGB images, a G2 row contains `overview_depth` and
+`wrist_depth` as float16 metres `(H,W,1)`, clipped to `[0,3]`.  The student
+runtime contract is exactly dual RGB-D, joint positions, gripper position, TCP
+pose, last action, and calibrated `belt/bowl_pos`.  It excludes object or belt
+velocity, contact, force, tactile, current, and torque.  `grasp_guidance` and
+`position_history` are stored only as teacher supervision; they are never
+student inputs.  `teacher/residual_action` is the frozen G1 residual before the
+environment's deterministic pick/place controller, not a direct actuator
+command.  This distinction must be preserved during visual-policy training.
+
+The conservative estimate including teacher geometry labels is about 83 GB per
+million 84x84 frames.  G2 forces `frame_stack=1`; temporal information for a
+student must be introduced explicitly by its model/data loader rather than
+silently inherited from an old checkpoint.
+
 ## What a shard contains
 
 `<out>/storage/` — a memmapped TensorDict, one row per env step, and `<out>/manifest.json`.

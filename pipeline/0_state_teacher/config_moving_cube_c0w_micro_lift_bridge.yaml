@@ -1,0 +1,69 @@
+# C0w: strict contact-free bridge from C0u sustained closure to a 5 mm lift.
+# Warm-start from the independently selected C0u checkpoint.  Conveyor speed
+# remains randomized in the environment and is not an actor/critic input.
+defaults:
+  - config_moving_cube_c0t_gap_direct_rl
+  - _self_
+
+env:
+  belt:
+    # Keep exactly the successful C0u range: 0.045--0.075 m/s.
+    speed: 0.06
+    speed_noise: 0.25
+  reward_set: moving_cube_bridge_v1
+  target_lift: 0.005
+  geometric_slip_penalty: 0.0
+  geometric_close_curriculum:
+    success_steps: 0
+    distance_threshold: 0.045
+    min_close_fraction: 0.15
+    max_close_fraction: 0.90
+    far_close_penalty: 0.50
+  geometric_close_lift_bridge:
+    enabled: true
+    close_steps: 5
+    distance_threshold: 0.045
+    min_close_fraction: 0.15
+    max_close_fraction: 0.90
+    prelift_max_height: 0.003
+    target_lift: 0.005
+    max_relative_drift: 0.008
+    success_steps: 5
+
+init_checkpoint: null
+# Preserve C0u's learned exploration scale; do not inject C0v's large dz noise.
+init_actor_scale: null
+resume_checkpoint: null
+
+collector:
+  # Probe ceiling: evaluate each 1M checkpoint and select by strict success.
+  total_frames: 10_000_000
+
+optim:
+  lr: 3.0e-5
+  anneal_lr: true
+
+loss:
+  ppo_epochs: 2
+  clip_epsilon: 0.05
+  entropy_coeff: 0.0
+  reference_checkpoint: ${init_checkpoint}
+  reference_kl_coeff: 0.25
+  reference_mean_kl_coeff: 1.0
+  freeze_actor_scale: true
+  freeze_actor_base: false
+  train_actor_head_only: false
+
+checkpoint:
+  interval_frames: 1_000_000
+
+early_stop:
+  success_rate: null
+  consecutive_evals: 1
+
+logger:
+  backend: null
+  exp_name: moving_cube_c0w_micro_lift_bridge
+
+run:
+  name: moving_cube_c0w_micro_lift_bridge_probe10m_4096_no_rtx

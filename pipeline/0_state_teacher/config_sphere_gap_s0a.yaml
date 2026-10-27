@@ -1,0 +1,99 @@
+# sphere_gap_s0a: from-scratch, speed-free GAP-style SAC at 0.01--0.03 m/s.
+# This is independent of the failed historical PPO sphere S0 route.
+defaults:
+  - config
+  - _self_
+
+env:
+  task: FoodRobot-MovingSphereGapLift-v0
+  num_envs: 64
+  arm: franka
+  food: moving_sphere
+  action_mode: ee_delta_pose
+  action_adapter: native
+  gripper_action_mode: continuous
+  ik_action_scale: 0.02
+  cameras: false
+  privileged_information: false
+  grasp_observation: false
+  temporal_history_steps: 0
+  position_history_steps: 0
+  grasp_point_observation: true
+  speed_free_observations: true
+  belt:
+    speed: 0.02
+    speed_noise: 0.50       # 0.01--0.03 m/s, environment DR only
+    place_window: 20.0      # constant 0.40 m nominal reach-zone length
+    pallet_start_range: [-0.04, 0.04]
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.02, 0.02]
+  destination_bowl_pos: [0.45, -0.10, 0.0]
+  destination_bowl_x_range: [0.45, 0.45]
+  destination_bowl_y_range: [-0.10, -0.10]
+  reward_set: sphere_gap_lift_v1
+  target_lift: 0.03
+  success_requires_home: false
+  robot_reset:
+    position_range: [-0.02, 0.02]
+    velocity_range: [0.0, 0.0]
+  grasp_pose_close_retract_option:
+    enabled: true
+    translation_threshold: 0.018
+    rotation_threshold: 0.15
+    approach_steps: 4
+    close_steps: 12
+    retract_steps: 15
+    retract_height: 0.04
+    close_action: -0.15
+    position_gain: 1.5
+    rotation_gain: 0.5
+    max_position_step: 0.004
+    max_rotation_step: 0.01
+
+network:
+  in_keys: &geometry_keys
+    - [proprio, ee_pos]
+    - [proprio, ee_quat]
+    - [proprio, gripper_pos]
+    - [proprio, joint_pos_rel]
+    - [proprio, last_action]
+    - [grasp_guidance, points_ee]
+    - [grasp_guidance, best_pose_delta]
+  grasp_in_key: [grasp_guidance, points_ee]
+  hidden: [256, 256]
+  point_hidden: 64
+  latent_dim: 256
+  log_std_init: -3.67
+  # Start with centimetre-scale near-zero arm commands and an open gripper.
+  mean_action_init: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8]
+
+init_checkpoint: null
+collector:
+  total_frames: 10_000_000
+replay:
+  capacity: 100_000
+  batch_size: 256
+  learning_starts: 4_096
+sac:
+  gamma: 0.99
+  tau: 0.005
+  actor_lr: 3.0e-4
+  critic_lr: 3.0e-4
+  alpha_lr: 3.0e-4
+  log_alpha_init: -2.3
+  target_entropy: -7.0
+  # 64 environments add 64 transitions per simulator step. Sixteen updates
+  # are a practical 3090 compromise while retaining GAP-RL's 16-step cadence.
+  gradient_steps: 16
+optim:
+  max_grad_norm: 10.0
+  matmul_precision: high
+reward_scale: 1.0
+checkpoint:
+  interval_frames: 500_000
+logger:
+  interval_frames: 50_000
+max_hours: null
+run:
+  dir: null
+  name: sphere_gap_s0a_sac_64_no_rtx

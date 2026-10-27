@@ -1,0 +1,10 @@
+# Geometry baseline + bounded PPO residual.  tcp_escape is mapped onto the
+# food_dropped event so workspace escape/continuous retreat is immediately
+# costly as well as terminal.
+reach_food: 6.0
+grasp: 6.0
+grasp_lift: 30.0
+success: 150.0
+food_dropped: -100.0
+action_rate: -0.001
+joint_vel: -0.0001

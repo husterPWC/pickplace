@@ -1,0 +1,21 @@
+# G0-S1: warm-start the accepted G0-S0e residual policy and randomize only
+# conveyor speed.  Actor/critic observations remain speed-free and the strict
+# success signal remains bilateral stable coupling plus a true 3 cm lift.
+defaults:
+  - config_moving_sphere_g0_s0e_residual_baseline
+  - _self_
+
+env:
+  belt:
+    speed: 0.02
+    speed_noise: 0.50       # uniform 0.01--0.03 m/s, environment DR only
+    place_window: 20.0      # preserve the same 0.40 m spatial reach zone
+
+collector:
+  total_frames: 2_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: moving_sphere_g0_s1_speed_001_003_1024_no_rtx

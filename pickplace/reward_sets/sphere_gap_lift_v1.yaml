@@ -1,0 +1,9 @@
+# Hidden contact is used only to teach/score a physical grasp.  The actor sees
+# none of these labels; reach_food is nearest-6D-grasp pose quality.
+reach_food: 6.0
+grasp: 6.0
+grasp_lift: 30.0
+success: 150.0
+food_dropped: -50.0
+action_rate: -0.001
+joint_vel: -0.0001

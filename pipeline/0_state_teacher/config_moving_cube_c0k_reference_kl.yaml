@@ -1,0 +1,38 @@
+# C0k: short, reference-anchored stabilization from the best C0a policy.
+# The action scale is frozen and the KL terms keep deterministic mean changes
+# small, preventing the long-horizon drift observed in C0s.
+defaults:
+  - config_moving_cube_c0_lift
+  - _self_
+
+env:
+  target_lift: 0.03
+
+# Preserve both the mean and learned exploration scale from the C0a checkpoint.
+init_actor_scale: null
+
+collector:
+  total_frames: 10_000_000
+
+optim:
+  lr: 1.0e-6
+
+loss:
+  ppo_epochs: 1
+  clip_epsilon: 0.05
+  entropy_coeff: 0.0
+  reference_checkpoint: ${init_checkpoint}
+  reference_kl_coeff: 1.0
+  reference_mean_kl_coeff: 4.0
+  freeze_actor_scale: true
+  train_actor_head_only: true
+
+checkpoint:
+  interval_frames: 1_000_000
+
+early_stop:
+  success_rate: 0.75
+  consecutive_evals: 2
+
+logger:
+  exp_name: moving_cube_c0k_reference_kl

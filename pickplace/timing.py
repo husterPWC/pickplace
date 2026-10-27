@@ -45,12 +45,14 @@ def validate_zone_reachable(
             )
 
 
-def validate_observation_flags(cameras: bool, privileged_information: bool) -> None:
+def validate_observation_flags(
+    cameras: bool, privileged_information: bool, task_object_observation: bool = False
+) -> None:
     """Raise if no observation group would carry information about the food."""
-    if not cameras and not privileged_information:
+    if not cameras and not privileged_information and not task_object_observation:
         raise ValueError(
-            "cameras=False and privileged_information=False leaves no observation that carries food "
-            "information; enable at least one of them."
+            "cameras=False, privileged_information=False, and task_object_observation=False leaves no "
+            "observation that carries food information; enable at least one of them."
         )
 
 
@@ -109,11 +111,17 @@ def validate_supply_bowl_range(
                     f"Supply bowl at ({x:.3f}, {y:.3f}) reaches {far_edge:.3f} m from the arm base, beyond "
                     f"reach_radius={reach_radius:.3f} m. Shrink ingredient_bowl_x_range/y_range."
                 )
-    belt_edge = belt_y - belt_half_width - belt_clearance
-    if y_range[1] + bowl_outer_radius > belt_edge:
+    belt_lower = belt_y - belt_half_width
+    belt_upper = belt_y + belt_half_width
+    supply_lower = y_range[0] - bowl_outer_radius
+    supply_upper = y_range[1] + bowl_outer_radius
+    clear_below = supply_upper <= belt_lower - belt_clearance
+    clear_above = supply_lower >= belt_upper + belt_clearance
+    if not (clear_below or clear_above):
         raise ValueError(
-            f"Supply bowl rim at y={y_range[1] + bowl_outer_radius:.3f} m comes within {belt_clearance} m of the "
-            f"belt strip (edge at y={belt_y - belt_half_width:.3f} m). Lower ingredient_bowl_y_range max."
+            f"Supply bowl y interval [{supply_lower:.3f}, {supply_upper:.3f}] m comes within "
+            f"{belt_clearance} m of belt interval [{belt_lower:.3f}, {belt_upper:.3f}] m. "
+            "Move the ingredient bowl farther to either side of the belt."
         )
 
 

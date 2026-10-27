@@ -1,0 +1,28 @@
+# Sphere S2: preserve placement while widening to the target operating range.
+defaults:
+  - config_moving_sphere_s1_place
+  - _self_
+
+env:
+  belt:
+    speed: 0.08
+    speed_noise: 0.25       # 0.06--0.10 m/s
+    place_window: 5.0
+    pallet_start_range: [-0.08, 0.08]
+    bowl_offset_x: [-0.02, 0.02]
+    bowl_offset_y: [-0.04, 0.04]
+
+init_checkpoint: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 50_000_000
+
+optim:
+  lr: 5.0e-5
+
+logger:
+  exp_name: moving_sphere_s2_speed
+
+run:
+  name: moving_sphere_s2_speed_4096_no_rtx

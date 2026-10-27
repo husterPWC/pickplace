@@ -37,6 +37,7 @@ def test_unreachable_zone_raises_with_explanation():
 def test_observation_flags_require_some_food_information():
     validate_observation_flags(cameras=True, privileged_information=False)
     validate_observation_flags(cameras=False, privileged_information=True)
+    validate_observation_flags(cameras=False, privileged_information=False, task_object_observation=True)
     with pytest.raises(ValueError, match="privileged_information"):
         validate_observation_flags(cameras=False, privileged_information=False)
 

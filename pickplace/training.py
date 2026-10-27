@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from tensordict import TensorDictBase
 
-from pickplace.metrics import OUTCOME_TERMS, outcome_rates
+from pickplace.metrics import outcome_rates
 from pickplace.rewards import REWARD_TERMS
 
 
@@ -19,7 +19,8 @@ def _metrics(data: TensorDictBase, done: torch.Tensor, prefix: str) -> dict[str,
         f"{prefix}/episode_length": completed_length[done].float().mean().item(),
         f"{prefix}/episodes": int(done.sum()),
     }
-    outcomes = {term: data["next", "outcome", term] for term in OUTCOME_TERMS}
+    outcome_td = data["next", "outcome"]
+    outcomes = {term: outcome_td[term] for term in outcome_td.keys()}
     metrics.update({f"{prefix}/{term}_rate": rate for term, rate in outcome_rates(done, outcomes).items()})
     if "episode_reward_terms" in data.keys() and ("next", "reward_terms") in data.keys(True):
         terms = (data["episode_reward_terms"] + data["next", "reward_terms"])[done.squeeze(-1)]

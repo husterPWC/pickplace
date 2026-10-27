@@ -30,6 +30,21 @@ randomized start poses (`robot_reset`: ±0.25 rad, ±0.1 rad/s). It warm-starts 
 
 With such a checkpoint, try the continuous demo without the scripted return: `demo.py ... home_between=false`.
 
+## Reproducing the unpublished warm-start chain
+
+The checkpoint referenced by `config_v3c.yaml` is not shipped in the source repository or the published
+Hugging Face dataset.  The historical configs show that the policy was trained as a three-stage curriculum:
+
+1. `config_repro_v2`: placement-only success, tight reset, `simple_v2`, from scratch.
+2. `config_repro_v2r_long`: warm-start from stage 1 and widen joint reset offsets to +-0.25 rad.
+3. `config_repro_v3c`: warm-start from stage 2 and require placement plus return to the TCP home position.
+
+On the local 3090, launch each stage with the guarded wrapper (all caches and artifacts remain in this repo):
+
+    scripts/run_teacher_curriculum_local.sh v2
+    scripts/run_teacher_curriculum_local.sh v2r artifacts/teachers/teacher_repro_v2_4096_no_rtx/checkpoints/ppo_teacher_final.pt
+    scripts/run_teacher_curriculum_local.sh v3c artifacts/teachers/teacher_repro_v2r_long_4096_no_rtx/checkpoints/ppo_teacher_final.pt
+
 **How the reward got here.** Earlier reward sets (`simple_v1`/`v2`, `staged_v1`) and their configs have been
 removed now that the pipeline has settled on one; the history is in the git log and worth one summary. The
 first teachers ended the episode the moment the food landed, so the arm had no trained behaviour afterwards

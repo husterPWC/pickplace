@@ -7,3 +7,8 @@ multirun
 checkpoints
 __pycache__
 .pytest_cache
+artifacts
+datasets
+weights
+logs
+wandb

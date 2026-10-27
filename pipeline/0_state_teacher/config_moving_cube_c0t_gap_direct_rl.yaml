@@ -1,0 +1,94 @@
+# C0t: direct PPO from scratch with a GAP-RL-inspired, speed-free geometric
+# observation contract.  Conveyor speed is randomized in the simulator but is
+# never exposed to either actor or critic.  This is intentionally independent
+# of C0p/C0q/C0s distillation and does not load any previous checkpoint.
+defaults:
+  - config_moving_cube_c0_lift
+  - _self_
+
+env:
+  privileged_information: false
+  grasp_observation: false
+  kinematic_grasp_proxy_observation: false
+  temporal_history_steps: 0
+  position_history_steps: 10
+  grasp_point_observation: true
+  speed_free_observations: true
+  belt:
+    # Per-episode range: 0.10 * (1 +/- 0.20) = 0.08--0.12 m/s.
+    # This is domain randomization only; the sampled value is not observed.
+    speed: 0.10
+    speed_noise: 0.20
+    place_window: 4.0
+    pallet_start_range: [-0.04, 0.04]
+    bowl_offset_x: [-0.01, 0.01]
+    bowl_offset_y: [-0.02, 0.02]
+  geometry_only_grasp: true
+  geometric_slip_penalty: 0.1
+  geometric_success_steps: 2
+  geometric_lift_velocity:
+    weight: 0.0
+    std: 0.05
+  close_retract_option:
+    steps: 0
+  grasp_stability:
+    hold_steps: 0
+    hold_reward: 3.0
+    slip_penalty: 0.0
+    prelift_max_height: null
+    premature_lift_penalty: 0.0
+    require_stable_success: false
+
+network:
+  architecture: grasp_point_gru
+  actor_in_keys: &speed_free_keys
+    - [proprio, ee_pos]
+    - [proprio, ee_quat]
+    - [proprio, gripper_pos]
+    - [proprio, joint_pos_rel]
+    - [proprio, last_action]
+    - [grasp_guidance, points_ee]
+    - [position_history, position_action]
+  # Keep the critic deployable and prevent privileged velocity leakage.
+  critic_in_keys: *speed_free_keys
+  grasp_in_key: [grasp_guidance, points_ee]
+  temporal_in_key: [position_history, position_action]
+  point_hidden: 64
+  temporal_hidden: 64
+
+init_checkpoint: null
+init_actor_scale: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 200_000_000
+
+optim:
+  lr: 3.0e-4
+  anneal_lr: true
+
+loss:
+  entropy_coeff: 0.005
+  freeze_actor_scale: false
+  freeze_actor_base: false
+  train_actor_head_only: false
+  reference_checkpoint: null
+  reference_kl_coeff: 0.0
+  reference_mean_kl_coeff: 0.0
+
+checkpoint:
+  interval_frames: 2_000_000
+
+worker:
+  enabled: false
+
+early_stop:
+  success_rate: null
+  consecutive_evals: 1
+
+logger:
+  backend: null
+  exp_name: moving_cube_c0t_gap_direct_rl
+
+run:
+  name: moving_cube_c0t_gap_direct_rl_4096_no_rtx

@@ -1,0 +1,14 @@
+# Recovery stage C0b: warm-start from a successful C0a policy and extend the
+# same behaviour from a 3 cm lift to the full 10 cm task clearance.
+defaults:
+  - config_moving_cube_c0_lift
+  - _self_
+
+env:
+  target_lift: 0.10
+
+# Keep the exploration learned by C0a; only C0a needs the targeted reset.
+init_actor_scale: null
+
+logger:
+  exp_name: moving_cube_c0b_lift10cm

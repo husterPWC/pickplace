@@ -37,6 +37,10 @@ class BeltCfg:
     pallet: PalletGeometry = PalletGeometry()
     bowl: BowlGeometry = BowlGeometry()
     pallet_damping: float = 1e4
+    visual_upstream_extension: float = 0.0
+    """Extra upstream-only belt length [m]. Zero preserves historical scenes."""
+    episode_completion_margin: float = 2.0
+    """Time [s] reserved after the longest nominal belt path for task completion."""
 
     def zone(self) -> BeltZone:
         return belt_zone(self.speed, self.place_window, self.zone_center_x)
@@ -46,8 +50,12 @@ class BeltCfg:
 
     def visual_length(self) -> float:
         """Length of the drawn belt strip, centred on ``zone_center_x``."""
-        return self.zone().length + 2 * self.entry_margin + 0.6
+        return self.zone().length + 2 * self.entry_margin + 0.6 + self.visual_upstream_extension
+
+    def visual_center_x(self) -> float:
+        """Extend upstream without moving the historical downstream edge."""
+        return self.zone_center_x - 0.5 * self.visual_upstream_extension
 
     def end_x(self) -> float:
         """Downstream end of the drawn belt strip (cell frame)."""
-        return self.zone_center_x + 0.5 * self.visual_length()
+        return self.visual_center_x() + 0.5 * self.visual_length()

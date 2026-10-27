@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from pickplace.metrics import OUTCOME_TERMS
+from pickplace.metrics import outcome_terms
 
 
 def _unwrapped(env):
@@ -72,12 +72,12 @@ def _make_episode_outcome(terms: Sequence[str]):
     return EpisodeOutcome()
 
 
-def _make_reward_terms_vector():
+def _make_reward_terms_vector(event_sources):
     import torch
     from torchrl.data import Unbounded
     from torchrl.envs import Transform
 
-    from pickplace.rewards import DENSE_TERMS, EVENT_SOURCES, EVENT_TERMS, REWARD_TERMS
+    from pickplace.rewards import DENSE_TERMS, EVENT_TERMS, REWARD_TERMS
 
     class RewardTermsVector(Transform):
         """Writes ``("next", "reward_terms")``: every reward term, unweighted, in ``REWARD_TERMS`` order.
@@ -104,7 +104,7 @@ def _make_reward_terms_vector():
             offset = len(DENSE_TERMS)
             for j, event in enumerate(EVENT_TERMS):
                 fired = torch.zeros(n, dtype=torch.bool, device=out.device)
-                for source in EVENT_SOURCES[event]:
+                for source in event_sources[event]:
                     fired |= next_tensordict.get(("outcome", source)).reshape(n).to(out.device)
                 out[:, offset + j] = fired.to(out.dtype)
             next_tensordict.set("reward_terms", out.to(next_tensordict.device))
@@ -146,12 +146,65 @@ def make_env(env_cfg: Mapping):
 
     import pickplace.envs  # noqa: F401  (gym registration)
     from pickplace.action_adapters import make_joint_action_adapter
+    from pickplace.action_gates import (
+        make_close_retract_option,
+        make_grasp_pose_close_retract_option,
+        make_stable_sphere_grasp_option,
+        make_stable_sphere_residual_skill,
+        make_stable_sphere_pick_place_skill,
+        make_geometric_micro_lift_option,
+        make_grasp_hold_action_gate,
+    )
     from pickplace.config import DEFAULT_ENV, build_cell_env_cfg
-    from pickplace.rewards import weight_vector
+    from pickplace.rewards import event_sources, weight_vector
 
     cfg = build_cell_env_cfg(env_cfg)
     adapter = env_cfg.get("action_adapter", DEFAULT_ENV["action_adapter"])
+    gate = {**DEFAULT_ENV["grasp_hold_gate"], **(env_cfg.get("grasp_hold_gate") or {})}
+    option = {**DEFAULT_ENV["close_retract_option"], **(env_cfg.get("close_retract_option") or {})}
+    micro_lift = {
+        **DEFAULT_ENV["geometric_micro_lift_option"],
+        **(env_cfg.get("geometric_micro_lift_option") or {}),
+    }
+    pose_option = {
+        **DEFAULT_ENV["grasp_pose_close_retract_option"],
+        **(env_cfg.get("grasp_pose_close_retract_option") or {}),
+    }
+    sphere_option = {
+        **DEFAULT_ENV["stable_sphere_grasp_option"],
+        **(env_cfg.get("stable_sphere_grasp_option") or {}),
+    }
+    sphere_residual = {
+        **DEFAULT_ENV["stable_sphere_residual_skill"],
+        **(env_cfg.get("stable_sphere_residual_skill") or {}),
+    }
+    sphere_pick_place = {
+        **DEFAULT_ENV["stable_sphere_pick_place_skill"],
+        **(env_cfg.get("stable_sphere_pick_place_skill") or {}),
+    }
+    if bool(sphere_residual["enabled"]) and hasattr(cfg.terminations, "tcp_escape"):
+        # Keep shaping and retreat detection on the exact same geometric
+        # interception schedule as the controller for lift curricula.  The
+        # full G1 placement task has generic reach/termination terms with a
+        # different call signature, so it must not receive lift-only params.
+        intercept_schedule = {
+            "intercept_lead_distance": float(sphere_residual["intercept_lead_distance"]),
+            "intercept_align_lead_distance": float(
+                sphere_residual["intercept_align_lead_distance"]
+            ),
+            "pre_descent_height": (
+                None
+                if sphere_residual["pre_descent_height"] is None
+                else float(sphere_residual["pre_descent_height"])
+            ),
+        }
+        cfg.rewards.reach_food.params.update(intercept_schedule)
+        cfg.terminations.tcp_escape.params.update(intercept_schedule)
+        if bool(sphere_residual["settled_coupling_reference"]):
+            cfg.rewards.grasp_lift.params["settled_reference"] = True
+            cfg.terminations.success.params["settled_reference"] = True
     task = env_cfg.get("task", DEFAULT_ENV["task"])
+    outcomes = outcome_terms(task)
     device = torch.device(env_cfg.get("device", DEFAULT_ENV["device"]))
     weights = torch.tensor(weight_vector(reward_weights(env_cfg)), device=device)
     base = IsaacLabWrapper(gym.make(task, cfg=cfg), native_autoreset=True, device=device)
@@ -159,8 +212,8 @@ def make_env(env_cfg: Mapping):
         # StepCounter first: it is the transform that can *add* a done (max_steps truncation), and the
         # two transforms below read `done` to decide which rows ended an episode.
         StepCounter(),
-        _make_episode_outcome(OUTCOME_TERMS),
-        _make_reward_terms_vector(),
+        _make_episode_outcome(outcomes),
+        _make_reward_terms_vector(event_sources(task)),
         LineariseRewards(in_keys=["reward_terms"], out_keys=["reward"], weights=weights),
         RewardSum(in_keys=["reward"], out_keys=["episode_reward"]),
         RewardSum(in_keys=["reward_terms"], out_keys=["episode_reward_terms"]),
@@ -170,6 +223,114 @@ def make_env(env_cfg: Mapping):
         # sampled in the adapted space and the last thing before the env gets its native one. Everything
         # above reads observations and rewards, which the adapter never touches.
         transforms.append(make_joint_action_adapter(adapter))
+    if int(gate["hold_steps"]) > 0:
+        # Last inverse transform = first controller-boundary operation. The
+        # collector therefore keeps the policy action while Isaac receives the
+        # gated command.
+        transforms.append(
+            make_grasp_hold_action_gate(
+                hold_steps=int(gate["hold_steps"]),
+                max_upward_dz=float(gate["max_upward_dz"]),
+                force_close=bool(gate["force_close"]),
+                follow_object_xy=bool(gate["follow_object_xy"]),
+                control_dt=float(cfg.sim.dt * cfg.decimation),
+                action_scale=float(cfg.arm.ik_action_scale),
+                follow_gain=float(gate["follow_gain"]),
+                max_follow_speed=float(gate["max_follow_speed"]),
+                freeze_rotation=bool(gate["freeze_rotation"]),
+            )
+        )
+    if int(option["steps"]) > 0:
+        transforms.append(
+            make_close_retract_option(
+                steps=int(option["steps"]),
+                retract_height=float(option["retract_height"]),
+                trigger_distance=float(option["trigger_distance"]),
+                trigger_gripper=float(option["trigger_gripper"]),
+                control_dt=float(cfg.sim.dt * cfg.decimation),
+                action_scale=float(cfg.arm.ik_action_scale),
+                follow_gain=float(option["follow_gain"]),
+                max_follow_speed=float(option["max_follow_speed"]),
+                xy_blend=float(option["xy_blend"]),
+            )
+        )
+    if bool(micro_lift["enabled"]):
+        transforms.append(
+            make_geometric_micro_lift_option(
+                close_steps=int(micro_lift["close_steps"]),
+                lift_steps=int(micro_lift["lift_steps"]),
+                hold_steps=int(micro_lift["hold_steps"]),
+                lift_height=float(micro_lift["lift_height"]),
+                distance_threshold=float(micro_lift["distance_threshold"]),
+                min_close_fraction=float(micro_lift["min_close_fraction"]),
+                max_close_fraction=float(micro_lift["max_close_fraction"]),
+                open_pos=float(cfg.arm.gripper_open),
+                closed_pos=float(cfg.arm.gripper_closed),
+                action_scale=float(cfg.arm.ik_action_scale),
+                xy_gain=float(micro_lift["xy_gain"]),
+                z_gain=float(micro_lift["z_gain"]),
+                max_xy_step=float(micro_lift["max_xy_step"]),
+                max_z_step=float(micro_lift["max_z_step"]),
+                max_finger_delta=float(micro_lift["max_finger_delta"]),
+                force_close=bool(micro_lift["force_close"]),
+                freeze_rotation=bool(micro_lift["freeze_rotation"]),
+            )
+        )
+    if bool(pose_option["enabled"]):
+        transforms.append(
+            make_grasp_pose_close_retract_option(
+                translation_threshold=float(pose_option["translation_threshold"]),
+                rotation_threshold=float(pose_option["rotation_threshold"]),
+                approach_steps=int(pose_option["approach_steps"]),
+                close_steps=int(pose_option["close_steps"]),
+                retract_steps=int(pose_option["retract_steps"]),
+                retract_height=float(pose_option["retract_height"]),
+                action_scale=float(cfg.arm.ik_action_scale),
+                close_action=float(pose_option["close_action"]),
+                position_gain=float(pose_option["position_gain"]),
+                rotation_gain=float(pose_option["rotation_gain"]),
+                max_position_step=float(pose_option["max_position_step"]),
+                max_rotation_step=float(pose_option["max_rotation_step"]),
+            )
+        )
+    if bool(sphere_option["enabled"]):
+        transforms.append(
+            make_stable_sphere_grasp_option(
+                **{
+                    key: value
+                    for key, value in sphere_option.items()
+                    if key != "enabled"
+                },
+                action_scale=float(cfg.arm.ik_action_scale),
+            )
+        )
+    if bool(sphere_pick_place["enabled"]):
+        transforms.append(
+            make_stable_sphere_pick_place_skill(
+                transport_config={
+                    key: value
+                    for key, value in sphere_pick_place.items()
+                    if key != "enabled"
+                },
+                **{
+                    key: value
+                    for key, value in sphere_residual.items()
+                    if key != "enabled"
+                },
+                action_scale=float(cfg.arm.ik_action_scale),
+            )
+        )
+    elif bool(sphere_residual["enabled"]):
+        transforms.append(
+            make_stable_sphere_residual_skill(
+                **{
+                    key: value
+                    for key, value in sphere_residual.items()
+                    if key != "enabled"
+                },
+                action_scale=float(cfg.arm.ik_action_scale),
+            )
+        )
     return TransformedEnv(base, Compose(*transforms))
 
 

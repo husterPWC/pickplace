@@ -1,0 +1,7 @@
+# Moving-sphere lift curriculum: reward a physically coupled vertical lift.
+reach_food: 1.0
+grasp: 3.0
+grasp_lift: 100.0
+success: 250.0
+action_rate: -0.005
+joint_vel: -0.0005

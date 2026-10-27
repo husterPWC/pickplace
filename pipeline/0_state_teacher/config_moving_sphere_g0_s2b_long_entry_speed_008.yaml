@@ -1,0 +1,35 @@
+# G0-S2b: preserve about 8 s of preparation at 0.08 m/s by moving the
+# sphere and its carrier upstream together. Actor/critic inputs remain free
+# of explicit speed, contact, force, tactile, current, and torque values.
+defaults:
+  - config_moving_sphere_g0_s1c_early_intercept_002_004
+  - _self_
+
+env:
+  belt:
+    speed: 0.08
+    speed_noise: 0.0
+    place_window: 5.0
+    # entry_x remains 0.20 m: -0.38 m puts both plate and sphere at x=-0.18 m.
+    pallet_start_range: [-0.38, -0.38]
+    bowl_offset_x: [0.0, 0.0]
+    bowl_offset_y: [0.0, 0.0]
+    visual_upstream_extension: 0.25
+    episode_completion_margin: 10.0
+    pallet:
+      travel_lower: -0.42
+  stable_sphere_residual_skill:
+    # Keep the target and strict acceptance unchanged; only avoid entering
+    # DONE while a securely held sphere is still rising.
+    lift_timeout_steps: 1200
+    lift_xy_gain: 0.01
+    max_lift_xy_step: 0.002
+    target_xy_feedforward_gain: 10.0
+    max_target_xy_feedforward_step: 0.002
+    latch_lift_xy_feedforward: true
+    lift_geometry_relatch_height: 0.012
+    preserve_lift_relative_xy: true
+    settled_coupling_reference: true
+
+run:
+  name: moving_sphere_g0_s2b_long_entry_speed_008_1024_no_rtx

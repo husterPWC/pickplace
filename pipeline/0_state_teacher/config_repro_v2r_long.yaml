@@ -1,0 +1,28 @@
+# Reconstructed second stage: fine-tune a successful repro_v2 checkpoint with wider robot reset poses.
+# Pass init_checkpoint=<repro_v2 checkpoint>; the local curriculum launcher enforces this requirement.
+defaults:
+  - config
+  - _self_
+
+env:
+  reward_set: simple_v2
+  success_requires_home: false
+  robot_reset:
+    position_range: [-0.25, 0.25]
+    velocity_range: [-0.1, 0.1]
+
+init_checkpoint: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 300_000_000
+
+optim:
+  lr: 1.0e-4
+
+early_stop:
+  success_rate: 0.97
+  consecutive_evals: 4
+
+logger:
+  exp_name: state_teacher_repro_v2r_long

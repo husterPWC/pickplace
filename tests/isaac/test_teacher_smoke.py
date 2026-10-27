@@ -107,6 +107,92 @@ def test_teacher_v3c_config_trains(tmp_path):
     assert config["network"]["hidden"] == [512, 256, 128] and config["env"]["action_mode"] == "ee_delta_pose"
 
 
+def test_teacher_repro_v2_config_trains(tmp_path):
+    """The reconstructed first curriculum stage uses placement-only success and the historical reward."""
+    proc, tail = _train(
+        tmp_path, "max_iterations=4", "checkpoint.interval_frames=0", "worker.enabled=false",
+        config_name="config_repro_v2",
+    )
+    assert "PPO_DONE" in proc.stdout, tail
+    config = json.loads((tmp_path / "run" / "manifest.json").read_text())["config"]
+    assert config["env"]["reward_set"] == "simple_v2"
+    assert config["env"]["success_requires_home"] is False
+    assert config["env"]["robot_reset"] == {
+        "position_range": [-0.02, 0.02], "velocity_range": [0.0, 0.0]
+    }
+    assert config["collector"]["total_frames"] == 600_000_000
+
+
+def test_teacher_c0h_stable_grasp_config_trains(tmp_path):
+    """The hold/slip probe builds both stateful rewards and keeps finite PPO losses."""
+    proc, tail = _train(
+        tmp_path,
+        "max_iterations=4",
+        "checkpoint.interval_frames=0",
+        "worker.enabled=false",
+        "init_checkpoint=null",
+        config_name="config_moving_cube_c0h_hold_stability",
+    )
+    assert "PPO_DONE" in proc.stdout, tail
+    metrics = _lines(proc.stdout, "METRICS ")
+    assert len(metrics) == 4
+    assert all(math.isfinite(v) for m in metrics for v in m.values() if isinstance(v, (int, float)))
+    config = json.loads((tmp_path / "run" / "manifest.json").read_text())["config"]
+    assert config["env"]["grasp_stability"] == {
+        "hold_steps": 6, "hold_reward": 3.0, "slip_penalty": 10.0,
+    }
+    assert config["env"]["reward_weights"]["grasp"] == 1.0
+    assert config["loss"]["freeze_actor_scale"] is True
+
+
+def test_teacher_c0i_staged_hold_config_trains(tmp_path):
+    """The true hold-then-lift FSM builds and remains finite under PPO."""
+    proc, tail = _train(
+        tmp_path,
+        "max_iterations=4",
+        "checkpoint.interval_frames=0",
+        "worker.enabled=false",
+        "init_checkpoint=null",
+        config_name="config_moving_cube_c0i_staged_hold",
+    )
+    assert "PPO_DONE" in proc.stdout, tail
+    metrics = _lines(proc.stdout, "METRICS ")
+    assert len(metrics) == 4
+    assert all(math.isfinite(v) for m in metrics for v in m.values() if isinstance(v, (int, float)))
+    config = json.loads((tmp_path / "run" / "manifest.json").read_text())["config"]
+    assert config["env"]["grasp_stability"] == {
+        "hold_steps": 5,
+        "hold_reward": 3.0,
+        "slip_penalty": 2.0,
+        "prelift_max_height": 0.02,
+        "premature_lift_penalty": 0.25,
+        "require_stable_success": True,
+    }
+    assert config["loss"]["train_actor_head_only"] is True
+
+
+def test_teacher_grasp_hold_action_gate_trains(tmp_path):
+    """The post-policy hold gate integrates with native Isaac actions and PPO."""
+    proc, tail = _train(
+        tmp_path,
+        "max_iterations=2",
+        "checkpoint.interval_frames=0",
+        "worker.enabled=false",
+        "init_checkpoint=null",
+        "env.grasp_hold_gate.hold_steps=5",
+        "env.grasp_hold_gate.follow_object_xy=true",
+        "env.grasp_hold_gate.freeze_rotation=true",
+        config_name="config_moving_cube_c0_lift",
+    )
+    assert "PPO_DONE" in proc.stdout, tail
+    config = json.loads((tmp_path / "run" / "manifest.json").read_text())["config"]
+    assert config["env"]["grasp_hold_gate"] == {
+        "hold_steps": 5, "max_upward_dz": 0.0, "force_close": True,
+        "follow_object_xy": True, "follow_gain": 0.5, "max_follow_speed": 0.15,
+        "freeze_rotation": True,
+    }
+
+
 def test_teacher_warm_starts_from_init_checkpoint(tmp_path):
     first, tail = _train(tmp_path / "first", "max_iterations=2", "checkpoint.interval_frames=0", "worker.enabled=false")
     assert "PPO_DONE" in first.stdout, tail
@@ -120,6 +206,26 @@ def test_teacher_warm_starts_from_init_checkpoint(tmp_path):
     assert "PPO_DONE" in second.stdout, tail2
     manifest = json.loads((tmp_path / "second" / "run" / "manifest.json").read_text())
     assert manifest["init_checkpoint"] == str(init_checkpoint)
+
+
+def test_teacher_resumes_optimizer_frames_and_iteration(tmp_path):
+    first, tail = _train(tmp_path / "first", "max_iterations=2", "checkpoint.interval_frames=0", "worker.enabled=false")
+    assert "PPO_DONE" in first.stdout, tail
+    resume_checkpoint = tmp_path / "first" / "run" / "checkpoints" / "ppo_teacher_final.pt"
+
+    second, tail2 = _train(
+        tmp_path / "second", "max_iterations=4", "checkpoint.interval_frames=0", "worker.enabled=false",
+        f"resume_checkpoint={resume_checkpoint}",
+    )
+    assert "PPO_DONE" in second.stdout, tail2
+    metrics = _lines(second.stdout, "METRICS ")
+    assert [m["iteration"] for m in metrics] == [2, 3], tail2
+    assert [m["frames"] for m in metrics] == [3 * N * ROLLOUT, 4 * N * ROLLOUT], tail2
+    manifest = json.loads((tmp_path / "second" / "run" / "manifest.json").read_text())
+    assert manifest["resume_checkpoint"] == str(resume_checkpoint)
+    assert manifest["resume_frames"] == 2 * N * ROLLOUT and manifest["resume_iteration"] == 1
+    final = json.loads((tmp_path / "second" / "run" / "checkpoints" / "ppo_teacher_final.json").read_text())
+    assert final["frames"] == 4 * N * ROLLOUT and final["iteration"] == 3
 
 
 def test_teacher_early_stop_saves_final_checkpoint(tmp_path):

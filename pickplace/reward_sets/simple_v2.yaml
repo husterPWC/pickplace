@@ -1,0 +1,11 @@
+# simple_v2 — the first successful state-teacher reward from the project's history.
+#
+# It deliberately has no motion penalties and does not reward returning home.  The first curriculum stage uses
+# it with success_requires_home=false and a tight robot reset.  The resulting placement policy is then
+# fine-tuned with wider reset randomization before switching to simple_v3b.
+reach_food: 1.0
+grasp: 2.0
+grasp_lift: 5.0
+transport: 10.0
+food_in_bowl: 20.0
+success: 100.0

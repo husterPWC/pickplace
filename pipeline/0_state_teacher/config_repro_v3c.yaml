@@ -1,0 +1,28 @@
+# Reconstructed final stage: add return-home reward/success on top of a successful randomized-start v2r policy.
+# Pass init_checkpoint=<repro_v2r_long checkpoint>; the local curriculum launcher enforces this requirement.
+defaults:
+  - config
+  - _self_
+
+env:
+  reward_set: simple_v3b
+  success_requires_home: true
+  robot_reset:
+    position_range: [-0.25, 0.25]
+    velocity_range: [-0.1, 0.1]
+
+init_checkpoint: null
+resume_checkpoint: null
+
+collector:
+  total_frames: 300_000_000
+
+optim:
+  lr: 1.0e-4
+
+early_stop:
+  success_rate: 0.95
+  consecutive_evals: 4
+
+logger:
+  exp_name: state_teacher_repro_v3c

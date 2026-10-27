@@ -1,0 +1,42 @@
+# C0h probe: learn to keep the moving cube stably pinched before lifting.
+# Failure diagnosis (1024 paired episodes) found a 5-step median longest hold
+# for failures versus 6 for successes, with no open command during failures.
+defaults:
+  - config_moving_cube_c0_lift
+  - _self_
+
+env:
+  target_lift: 0.03
+  grasp_stability:
+    hold_steps: 6          # 0.12 s at the 50 Hz control rate
+    hold_reward: 3.0       # matches the old grasp reward after stability
+    slip_penalty: 10.0     # one-shot return penalty on held -> not held
+  reward_weights:
+    # stable_grasp_stage already emits the old +3/s hold scale and the direct
+    # -10 slip event, so keep this composite term's outer weight at one.
+    grasp: 1.0
+
+init_actor_scale: null
+
+collector:
+  total_frames: 8_000_000
+
+optim:
+  lr: 1.0e-5
+
+loss:
+  ppo_epochs: 2
+  clip_epsilon: 0.10
+  entropy_coeff: 0.0005
+  freeze_actor_scale: true
+  train_actor_head_only: false
+
+checkpoint:
+  interval_frames: 1_000_000
+
+early_stop:
+  success_rate: 0.78
+  consecutive_evals: 2
+
+logger:
+  exp_name: moving_cube_c0h_hold6_slip10_probe

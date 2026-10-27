@@ -1,0 +1,21 @@
+# G0-S2: warm-start the accepted G0-S1 policy and widen only conveyor speed.
+# Actor/critic observations remain speed-free; strict success remains stable
+# bilateral coupling plus a true 3 cm sphere lift.
+defaults:
+  - config_moving_sphere_g0_s1_speed_001_003
+  - _self_
+
+env:
+  belt:
+    speed: 0.04
+    speed_noise: 0.25       # uniform 0.03--0.05 m/s, environment DR only
+    place_window: 10.0      # preserve the same 0.40 m spatial reach zone
+
+collector:
+  total_frames: 2_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: moving_sphere_g0_s2_speed_003_005_1024_no_rtx

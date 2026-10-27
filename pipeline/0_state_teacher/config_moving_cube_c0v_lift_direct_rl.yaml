@@ -1,0 +1,35 @@
+# C0v-2: warm-start from a successful C0u stable-close policy, then learn a
+# 3 cm lift.  Speed remains environment-only and widens to 0.06--0.10 m/s.
+defaults:
+  - config_moving_cube_c0t_gap_direct_rl
+  - _self_
+
+env:
+  belt:
+    speed: 0.08
+    speed_noise: 0.25
+  geometric_close_curriculum:
+    success_steps: 0
+    far_close_penalty: 0.25
+
+init_checkpoint: null
+init_actor_scale: [-1.7, -1.7, -1.2, -1.5, -1.5, -1.5, -1.0]
+resume_checkpoint: null
+
+collector:
+  # Probe ceiling only: select the best independently evaluated checkpoint;
+  # do not assume the final checkpoint is best or extend this stage blindly.
+  total_frames: 20_000_000
+
+optim:
+  lr: 1.0e-4
+  anneal_lr: true
+
+checkpoint:
+  interval_frames: 2_000_000
+
+logger:
+  exp_name: moving_cube_c0v_lift_direct_rl
+
+run:
+  name: moving_cube_c0v_lift_direct_rl_probe20m_4096_no_rtx

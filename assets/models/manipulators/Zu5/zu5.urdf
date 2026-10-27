@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  JAKA ZU5 URDF converted from Zu5.xml for Isaac Lab/Isaac Sim import.
+
+  Geometry, kinematic transforms, joint limits, and link inertials come from
+  the uploaded MuJoCo model. Joint velocity limits were cross-checked against
+  JAKA's official ROS 2 description (JAKARobotics/jaka_ros2).
+
+  Mesh units are metres.  The collision geometry intentionally uses the
+  original meshes; replace it with convex decompositions before large-scale
+  contact-heavy training if simulation performance requires it.
+-->
+<robot name="jaka_zu5">
+  <material name="zu5_light_grey">
+    <color rgba="0.84706 0.84706 0.84706 1"/>
+  </material>
+
+  <link name="Link_0">
+    <inertial>
+      <origin xyz="0.00438 0.016627 0.000055" rpy="0 0 0"/>
+      <mass value="0.905"/>
+      <inertia ixx="0.0014" ixy="0" ixz="0" iyy="0.0035" iyz="0" izz="0.0024"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/Link_0.STL"/></geometry>
+      <material name="zu5_light_grey"/>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/Link_0.STL"/></geometry>
+    </collision>
+  </link>
+
+  <link name="Link_1">
+    <inertial>
+      <origin xyz="-2.5186e-07 0.0033226 -0.001509"
+              rpy="0.00113988270634 4.48400642918e-05 0.000126215956042"/>
+      <mass value="3.78375"/>
+      <inertia ixx="0.044302" ixy="0" ixz="0" iyy="0.043091" iyz="0" izz="0.030523"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/Link_1.STL"/></geometry>
+      <material name="zu5_light_grey"/>
+    </visual>
+    <collision><geometry><mesh filename="meshes/Link_1.STL"/></geometry></collision>
+  </link>
+  <joint name="joint_1" type="revolute">
+    <parent link="Link_0"/>
+    <child link="Link_1"/>
+    <origin xyz="0 0 0.12015" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-6.28" upper="6.28" effort="150" velocity="3.14"/>
+    <dynamics damping="0.1" friction="0"/>
+  </joint>
+
+  <link name="Link_2">
+    <inertial>
+      <origin xyz="0.215 6.4325e-09 -0.14315" rpy="1.57079632679 0 1.57079632679"/>
+      <mass value="11.46175"/>
+      <inertia ixx="1.5964" ixy="0" ixz="0" iyy="1.5689" iyz="0" izz="0.10377"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/Link_2.STL"/></geometry>
+      <material name="zu5_light_grey"/>
+    </visual>
+    <collision><geometry><mesh filename="meshes/Link_2.STL"/></geometry></collision>
+  </link>
+  <joint name="joint_2" type="revolute">
+    <parent link="Link_1"/>
+    <child link="Link_2"/>
+    <origin xyz="0 0 0" rpy="1.57080056944 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.48" upper="4.62" effort="150" velocity="3.14"/>
+    <dynamics damping="0.1" friction="0"/>
+  </joint>
+
+  <link name="Link_3">
+    <inertial>
+      <origin xyz="0.19087 -1.1862e-05 -0.010587"
+              rpy="1.51288224634 -4.96894975399e-05 1.57080777025"/>
+      <mass value="4.51725"/>
+      <inertia ixx="0.41632" ixy="0" ixz="0" iyy="0.412021" iyz="0" izz="0.0207552"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/Link_3.STL"/></geometry>
+      <material name="zu5_light_grey"/>
+    </visual>
+    <collision><geometry><mesh filename="meshes/Link_3.STL"/></geometry></collision>
+  </link>
+  <joint name="joint_3" type="revolute">
+    <parent link="Link_2"/>
+    <child link="Link_3"/>
+    <origin xyz="0.43 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.05" upper="3.05" effort="150" velocity="3.14"/>
+    <dynamics damping="0.1" friction="0"/>
+  </joint>
+
+  <link name="Link_4">
+    <inertial>
+      <origin xyz="-2.1345e-06 -0.0058004 0.0026717"
+              rpy="1.59308761888 5.21247906735e-05 2.9211916743e-05"/>
+      <mass value="1.388"/>
+      <inertia ixx="0.0092564" ixy="0" ixz="0" iyy="0.00897016" iyz="0" izz="0.00522324"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/Link_4.STL"/></geometry>
+      <material name="zu5_light_grey"/>
+    </visual>
+    <collision><geometry><mesh filename="meshes/Link_4.STL"/></geometry></collision>
+  </link>
+  <joint name="joint_4" type="revolute">
+    <parent link="Link_3"/>
+    <child link="Link_4"/>
+    <origin xyz="0.3685 -1.185e-05 -0.114" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.48" upper="4.62" effort="28" velocity="3.14"/>
+    <dynamics damping="0.1" friction="0"/>
+  </joint>
+
+  <link name="Link_5">
+    <inertial>
+      <origin xyz="-2.0304e-06 -0.0028889 -0.0023424"
+              rpy="1.56416931099 -1.76686190769e-05 -1.49473137947e-05"/>
+      <mass value="1.583475"/>
+      <inertia ixx="0.012993" ixy="0" ixz="0" iyy="0.0127003" iyz="0" izz="0.0058451"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/Link_5.STL"/></geometry>
+      <material name="zu5_light_grey"/>
+    </visual>
+    <collision><geometry><mesh filename="meshes/Link_5.STL"/></geometry></collision>
+  </link>
+  <joint name="joint_5" type="revolute">
+    <parent link="Link_4"/>
+    <child link="Link_5"/>
+    <origin xyz="0 -0.1135 0" rpy="1.57080056944 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-6.28" upper="6.28" effort="28" velocity="3.14"/>
+    <dynamics damping="0.1" friction="0"/>
+  </joint>
+
+  <link name="Link_6">
+    <inertial>
+      <origin xyz="2.7652e-05 -1.3485e-05 -0.021245"
+              rpy="1.05203149501 -1.56824922701 2.21996751062"/>
+      <mass value="0.3425"/>
+      <inertia ixx="0.0011337" ixy="0" ixz="0" iyy="0.00072384" iyz="0" izz="0.000718438"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/Link_6.STL"/></geometry>
+      <material name="zu5_light_grey"/>
+    </visual>
+    <collision><geometry><mesh filename="meshes/Link_6.STL"/></geometry></collision>
+  </link>
+  <joint name="joint_6" type="revolute">
+    <parent link="Link_5"/>
+    <child link="Link_6"/>
+    <origin xyz="0 0.107 0" rpy="-1.57080056944 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-6.28" upper="6.28" effort="28" velocity="3.14"/>
+    <dynamics damping="0.1" friction="0"/>
+  </joint>
+
+  <!-- End-effector mounting frame preserved from the MJCF attachment body. -->
+  <link name="tool0"/>
+  <joint name="tool0_fixed_joint" type="fixed">
+    <parent link="Link_6"/>
+    <child link="tool0"/>
+    <origin xyz="0 0 0" rpy="0 0 3.141592653589793"/>
+  </joint>
+</robot>

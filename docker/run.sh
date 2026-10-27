@@ -14,7 +14,7 @@
 #   DOCKER_NAME=<name> container name; only meaningful with DOCKER_DETACH=1.
 #   WANDB_API_KEY / WANDB_MODE  forwarded into the container when set on the host.
 #   ~/.netrc                    mounted read-only at /root/.netrc when present (W&B credentials).
-#   FOOD_ROBOT_ARTIFACTS_HOST   host dir for pipeline artifacts (default: $HOME/food-robot-artifacts),
+#   FOOD_ROBOT_ARTIFACTS_HOST   host dir for pipeline artifacts (default: <repo>/artifacts),
 #                                mounted at /workspace/artifacts (container $HOME is ephemeral).
 #   FOOD_ROBOT_GIT_COMMIT       forwarded into the container when set (scripts/spark.sh sets this;
 #                                the container has no .git since the rsync excludes it).
@@ -56,7 +56,7 @@ if [[ -f "$HOME/.netrc" ]]; then
 fi
 
 # Pipeline artifacts (checkpoints, datasets) live outside the repo on the host and are mounted in.
-ARTIFACTS_HOST="${FOOD_ROBOT_ARTIFACTS_HOST:-$HOME/food-robot-artifacts}"
+ARTIFACTS_HOST="${FOOD_ROBOT_ARTIFACTS_HOST:-$ROOT/artifacts}"
 mkdir -p "$ARTIFACTS_HOST"
 ARTIFACT_FLAGS=(-v "$ARTIFACTS_HOST:/workspace/artifacts" -e FOOD_ROBOT_ARTIFACTS=/workspace/artifacts)
 if [[ -n "${FOOD_ROBOT_GIT_COMMIT:-}" ]]; then

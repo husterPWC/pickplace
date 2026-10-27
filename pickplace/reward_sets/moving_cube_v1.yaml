@@ -1,0 +1,14 @@
+# Moving cube -> static bowl, full-task reward contract.
+#
+# The task reuses the stable staged vocabulary while the moving object, rather
+# than the target bowl, carries the deadline. The target bowl is kinematic, so
+# bowl_disturbance and bowl_failure are intentionally inactive.
+reach_food: 1.0
+grasp: 2.0
+grasp_lift: 5.0
+transport: 10.0
+food_in_bowl: 20.0
+return_home: 10.0
+success: 150.0
+action_rate: -0.01
+joint_vel: -0.001

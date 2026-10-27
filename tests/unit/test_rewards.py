@@ -2,7 +2,8 @@ import pytest
 
 from pickplace import rewards as R
 
-# simple_v3b is the only reward set in the repo: the one the published teacher and datasets were made with.
+# simple_v3b is the final reward set used by the published teacher and datasets.  simple_v2 is retained because
+# the published policy was warm-started through it and cannot be reproduced from scratch with v3b reliably.
 SIMPLE_V3B = {
     "reach_food": 1.0, "grasp": 2.0, "grasp_lift": 5.0, "transport": 10.0, "transport_fine": 0.0,
     "bowl_disturbance": -10.0, "action_rate": -0.01, "joint_vel": -0.001, "food_in_bowl": 20.0,
@@ -18,13 +19,56 @@ def test_vocabulary_is_dense_then_events_without_duplicates():
     assert R.EVENT_SOURCES["bowl_failure"] == ("bowl_off_belt", "bowl_tipped")
 
 
-def test_simple_v3b_is_the_only_set_and_has_todays_weights():
-    assert R.available_reward_sets() == ["simple_v3b"]
+def test_simple_v3b_has_todays_weights():
+    assert R.available_reward_sets() == [
+        "moving_cube_bridge_v1",
+        "moving_cube_close_v1",
+        "moving_cube_lift_v1",
+        "moving_cube_v1",
+        "moving_sphere_lift_v1",
+        "moving_sphere_v1",
+        "simple_v2",
+        "simple_v3b",
+        "sphere_a0_lift_v1",
+        "sphere_gap_lift_v1",
+        "sphere_residual_lift_v1",
+    ]
     weights = R.load_reward_set("simple_v3b")
     assert weights == SIMPLE_V3B
     assert set(weights) == set(R.REWARD_TERMS)
     active = {t for t, w in weights.items() if w != 0.0}
     assert active == set(R.REWARD_TERMS) - {"transport_fine", "bowl_failure", "food_dropped"}
+
+
+def test_simple_v2_is_the_penalty_free_placement_curriculum():
+    expected = {
+        "reach_food": 1.0,
+        "grasp": 2.0,
+        "grasp_lift": 5.0,
+        "transport": 10.0,
+        "food_in_bowl": 20.0,
+        "success": 100.0,
+    }
+    weights = R.load_reward_set("simple_v2")
+    assert {term: weight for term, weight in weights.items() if weight != 0.0} == expected
+    assert weights["return_home"] == 0.0
+
+
+def test_moving_cube_reward_disables_fixed_bowl_failure_terms():
+    weights = R.load_reward_set("moving_cube_v1")
+    assert weights["success"] == 150.0
+    assert weights["return_home"] == 10.0
+    assert weights["bowl_disturbance"] == 0.0
+    assert weights["bowl_failure"] == 0.0
+
+
+def test_moving_cube_lift_curriculum_is_dense_and_has_no_placement_terms():
+    weights = R.load_reward_set("moving_cube_lift_v1")
+    assert weights["grasp_lift"] == 100.0
+    assert weights["success"] == 250.0
+    assert weights["transport"] == 0.0
+    assert weights["food_in_bowl"] == 0.0
+    assert weights["return_home"] == 0.0
 
 
 def test_food_in_bowl_then_return_home_are_the_last_dense_terms():
@@ -47,6 +91,36 @@ def test_default_robot_reset_matches_todays_reset_joints_offset():
 
     # every existing config keeps today's tight reset (reset_joints_by_offset's params before robot_reset existed)
     assert DEFAULT_ENV["robot_reset"] == {"position_range": [-0.02, 0.02], "velocity_range": [0.0, 0.0]}
+
+
+def test_grasp_stability_is_opt_in_and_preserves_existing_tasks():
+    from pickplace.config import DEFAULT_ENV
+
+    assert DEFAULT_ENV["grasp_stability"] == {
+        "hold_steps": 0,
+        "hold_reward": 3.0,
+        "slip_penalty": 0.0,
+        "prelift_max_height": None,
+        "premature_lift_penalty": 0.0,
+        "require_stable_success": False,
+    }
+    assert DEFAULT_ENV["grasp_hold_gate"] == {
+        "hold_steps": 0, "max_upward_dz": 0.0, "force_close": True,
+        "follow_object_xy": False, "follow_gain": 0.5, "max_follow_speed": 0.15,
+        "freeze_rotation": False,
+    }
+    assert DEFAULT_ENV["geometric_grasp_stability"]["stable_steps"] == 0
+    assert DEFAULT_ENV["geometric_grasp_stability"]["relative_speed_threshold"] == 0.035
+    assert DEFAULT_ENV["geometric_lift_velocity"] == {"weight": 0.0, "std": 0.05}
+    assert DEFAULT_ENV["geometric_close_curriculum"] == {
+        "success_steps": 0,
+        "distance_threshold": 0.045,
+        "min_close_fraction": 0.15,
+        "max_close_fraction": 0.90,
+        "far_close_penalty": 0.0,
+    }
+    assert DEFAULT_ENV["geometric_close_lift_bridge"]["enabled"] is False
+    assert DEFAULT_ENV["geometric_close_lift_bridge"]["target_lift"] == 0.005
 
 
 def test_unlisted_terms_default_to_zero(tmp_path):

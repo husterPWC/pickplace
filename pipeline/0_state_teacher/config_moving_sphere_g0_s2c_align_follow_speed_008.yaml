@@ -1,0 +1,38 @@
+# G0-S2c: fix the local high-speed alignment/closure dynamics identified by
+# the 0/256 G0-S2b Isaac diagnostic.  Do not relax the strict 7 mm gate: ALIGN
+# follows target geometry history, and CLOSE requires both filtered and
+# current raw pose errors to pass the same gate.
+defaults:
+  - config_moving_sphere_g0_s2b_long_entry_speed_008
+  - _self_
+
+env:
+  stable_sphere_residual_skill:
+    # Enter target-synchronous alignment 2 cm earlier than G0-S2b.  The
+    # geometry probe showed that 4 cm left only three valid control steps
+    # before the moving sphere outran the final vertical descent.
+    intercept_align_lead_distance: 0.06
+    align_target_xy_feedforward: true
+    close_requires_raw_alignment: true
+    # Four times the filtered per-step target displacement is sufficient to
+    # remove the intercept transient at 0.08 m/s.  The absolute 8 mm clamp
+    # below prevents this from becoming an unbounded velocity command.
+    target_xy_feedforward_gain: 4.0
+    # At 50 Hz, 0.08 m/s is 1.6 mm per control step.  Eight millimetres is a
+    # controller ceiling, not a fixed command; it provides IK tracking margin
+    # while remaining below the 20 mm Cartesian action scale.
+    max_target_xy_feedforward_step: 0.008
+    max_close_hold_xy_step: 0.008
+
+# This is a short boundary adaptation from an already 87.5%-successful
+# warm-start, not a new long curriculum.  Keep all four 250 k checkpoints so
+# the selected policy is based on independent strict evaluation rather than
+# automatically preferring the final weights.
+collector:
+  total_frames: 1_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: moving_sphere_g0_s2c_align_follow_speed_008_1024_no_rtx

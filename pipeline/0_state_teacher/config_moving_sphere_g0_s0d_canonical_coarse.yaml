@@ -1,0 +1,32 @@
+# G0-S0d: adapt the best historical coarse interceptor to canonical sphere yaw.
+#
+# The historical multi-yaw actor can already approach to roughly 8--30 cm,
+# while the from-scratch millimetre-noise S0c probe stayed 47--52 cm away.
+# This bridge therefore warm-starts the coarse policy, resets exploration to
+# an intermediate ~6 mm Cartesian scale, and keeps the slow deterministic
+# belt/reset distribution.  The strict option gate and true 3 cm lift success
+# remain unchanged; speed/contact/force remain absent from actor inputs.
+defaults:
+  - config_moving_sphere_g0_s0_canonical_gate
+  - _self_
+
+init_checkpoint: null
+# log(std)=-1.2 -> std~=0.30 normalized, about 6 mm at the 2 cm action scale.
+init_actor_scale: -1.2
+
+collector:
+  total_frames: 2_000_000
+
+optim:
+  lr: 1.0e-4
+  anneal_lr: true
+
+loss:
+  entropy_coeff: 0.001
+  freeze_actor_scale: false
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: moving_sphere_g0_s0d_canonical_coarse_1024_no_rtx

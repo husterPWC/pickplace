@@ -1,0 +1,40 @@
+# C0s stabilization: fine-tune the best 3 cm lift policy with less exploration
+# noise and an explicit penalty for the dominant failure (cube off the belt).
+defaults:
+  - config_moving_cube_c0_lift
+  - _self_
+
+env:
+  target_lift: 0.03
+  reward_weights:
+    # A stronger -100 probe reduced off-belt failures but doubled timeouts: it
+    # made the mean policy overly cautious.  -30 still distinguishes a drop
+    # from a timeout without overwhelming the +250 success event.
+    food_dropped: -30.0
+
+# Action order: dx, dy, dz, rx, ry, rz, gripper.  These are the best C0a
+# checkpoint's learned log-standard-deviations minus 0.20: retain its relative
+# exploration profile while making rollouts less destructive.
+init_actor_scale: [-2.07, -1.52, -0.64, -0.83, -0.77, -0.65, -0.75]
+
+collector:
+  total_frames: 50_000_000
+
+optim:
+  lr: 2.0e-5
+
+loss:
+  # Conservative PPO updates: stabilization must not erase the 70% policy.
+  ppo_epochs: 2
+  clip_epsilon: 0.10
+  entropy_coeff: 0.0005
+
+checkpoint:
+  interval_frames: 2_500_000
+
+early_stop:
+  success_rate: 0.85
+  consecutive_evals: 3
+
+logger:
+  exp_name: moving_cube_c0s_stabilize3cm

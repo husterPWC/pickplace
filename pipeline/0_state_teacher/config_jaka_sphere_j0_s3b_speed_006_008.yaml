@@ -1,0 +1,21 @@
+# JAKA J0-S3b: widen the accepted position-randomized J0-S3a domain to a
+# 0.06--0.08 m/s conveyor-speed neighborhood.  Belt speed remains an
+# environment-only randomization parameter and is not added to actor inputs.
+defaults:
+  - config_jaka_sphere_j0_s3a_position_randomization_008
+  - _self_
+
+env:
+  belt:
+    speed: 0.07
+    speed_noise: 0.14285714285714285  # uniform 0.06--0.08 m/s
+    place_window: 5.714285714285714   # 0.40 m nominal spatial reach zone
+
+collector:
+  total_frames: 1_000_000
+
+checkpoint:
+  interval_frames: 250_000
+
+run:
+  name: jaka_zu5_ag95_sphere_j0_s3b_speed_006_008_1024_no_rtx

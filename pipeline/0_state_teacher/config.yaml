@@ -21,6 +21,22 @@ env:
   success_requires_home: true  # simple_v3b pays return_home, so the episode must not end at the placement:
                                # success = food settled in the bowl AND the TCP back within home_tolerance
   reward_weights: {}         # per-run overrides on top of the set
+  grasp_hold_gate:            # optional low-level post-policy hold window; disabled preserves every old run
+    hold_steps: 0
+    max_upward_dz: 0.0
+    force_close: true
+    follow_object_xy: false   # replace policy XY with object velocity + relative-position feedback during hold
+    follow_gain: 0.5
+    max_follow_speed: 0.15
+    freeze_rotation: false
+  close_retract_option:       # geometric trigger; never reads contact/force/tactile/current
+    steps: 0                  # 0 disables; C0m enables it after A/B validation
+    retract_height: 0.035
+    trigger_distance: 0.045
+    trigger_gripper: -0.5
+    follow_gain: 0.5
+    max_follow_speed: 0.15
+    xy_blend: 0.5
   food_params: {}
   seed: 0
   device: cuda:0
@@ -34,11 +50,22 @@ run:
 
 init_checkpoint: null        # path to a teacher .pt: warm-start actor+critic from it (fresh optimizer, frames/
                               # iteration start at 0); fails loudly if the checkpoint's network config doesn't match
+init_actor_scale: null       # optional raw state-independent log-scale after warm-start; scalar or one value per
+                              # action dimension, retaining the learned action mean
+resume_checkpoint: null      # path to a teacher .pt: resume actor+critic+optimizer and global frames/iteration;
+                              # collector.total_frames/max_iterations remain the absolute training horizon
 
 network:
+  architecture: mlp          # mlp | temporal_residual_gru | grasp_point_gru
+  actor_out_gain: 0.01       # 0 makes the initial deterministic actor exactly zero (useful for residual baselines)
   actor_in_keys: [proprio, belt, privileged]
   critic_in_keys: [proprio, belt, privileged]
   hidden: [512, 256, 128]
+  temporal_in_key: [temporal, motion]
+  temporal_hidden: 64
+  grasp_in_key: [grasp_guidance, points_ee]
+  point_hidden: 64
+  temporal_actor_residual_limit: null # max pre-tanh correction per action; temporal configs set this
 
 collector:
   rollout_steps: 16          # benchmark (docs/experiments/pipeline_stage0/benchmark)
@@ -69,6 +96,14 @@ loss:
   critic_coeff: 0.5
   shifted_gae: true          # benchmark (docs/experiments/pipeline_stage0/benchmark)
                              # GAE(shifted=True): one critic call over obs_0..obs_T instead of obs and next obs
+  reference_checkpoint: null # frozen policy used by the optional fine-tuning KL anchor
+  reference_kl_coeff: 0.0    # analytic KL(current || reference) coefficient; 0 disables the anchor
+  reference_mean_kl_coeff: 0.0 # extra coefficient on the normalized action-mean contribution to that KL
+  reference_action_weights: null # optional per-action KL weights; null preserves equal weighting
+  action_l1_coeff: 0.0       # direct |policy action| penalty; residual tasks use this to stop constant saturation
+  freeze_actor_scale: false  # keep the checkpoint's action variance fixed; only the policy mean may adapt
+  freeze_actor_base: false   # temporal model only: preserve the imported MLP and learn only its GRU residual
+  train_actor_head_only: false # freeze the actor feature extractor and update only its final mean-output layer
 
 compile:                     # torch.compile wiring as in TorchRL's sota-implementations/ppo/ppo_mujoco.py
   compile: false             # compile the PPO update, GAE and the collector's policy call
