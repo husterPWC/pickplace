@@ -74,6 +74,14 @@ scripts/check_jaka_visual_server.sh
 ./docker/run.sh python scripts/verify_install.py
 ```
 
+在共享八卡服务器上必须显式限制可见 GPU。例如 GPU7 空闲时使用：
+
+```bash
+FOOD_ROBOT_GPUS=device=7 ./docker/run.sh python scripts/verify_install.py
+```
+
+容器内显示的 `cuda:0` 此时映射到物理 GPU7；不要同时再传物理编号 `7` 给容器内程序。后续所有 Isaac 采集命令都沿用同一个 `FOOD_ROBOT_GPUS=device=7` 前缀。
+
 固定基线来自当前仓库：
 
 ```text

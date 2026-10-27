@@ -18,10 +18,13 @@
 #                                mounted at /workspace/artifacts (container $HOME is ephemeral).
 #   FOOD_ROBOT_GIT_COMMIT       forwarded into the container when set (scripts/spark.sh sets this;
 #                                the container has no .git since the rsync excludes it).
+#   FOOD_ROBOT_GPUS             Docker GPU request (default: all).  Use device=7 on a shared
+#                                eight-GPU host to expose only physical GPU7 to Isaac.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE="${FOOD_ROBOT_IMAGE:-food-robot:latest}"
+GPU_REQUEST="${FOOD_ROBOT_GPUS:-all}"
 
 RUN_FLAGS=()
 if [[ "${DOCKER_DETACH:-0}" == "1" ]]; then
@@ -64,7 +67,7 @@ if [[ -n "${FOOD_ROBOT_GIT_COMMIT:-}" ]]; then
 fi
 
 exec docker run "${RUN_FLAGS[@]}" \
-  --gpus all --network host --ipc=host \
+  --gpus "$GPU_REQUEST" --network host --ipc=host \
   -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y -e OMNI_KIT_ACCEPT_EULA=YES -e NVIDIA_DRIVER_CAPABILITIES=all \
   -v "$ROOT":/workspace/food-robot \
   "${VOLUME_FLAGS[@]}" \
