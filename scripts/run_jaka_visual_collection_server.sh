@@ -86,6 +86,12 @@ export OMNI_KIT_ACCEPT_EULA=YES
 export PYTHONFAULTHANDLER=1
 export PYTHONUNBUFFERED=1
 
+if [[ "$(hostname)" != "robot" && -z "${PICKPLACE_PHYSICAL_GPU:-}" && -z "${NVIDIA_VISIBLE_DEVICES:-}" ]]; then
+  echo "set PICKPLACE_PHYSICAL_GPU to a currently free physical GPU for bare-metal collection" >&2
+  echo "(inside a GPU-isolated Docker container, NVIDIA_VISIBLE_DEVICES is sufficient)" >&2
+  exit 2
+fi
+
 COMMAND=(
   "$PYTHON_BIN" -X faulthandler pipeline/1_collect_data/collect.py
   "checkpoint=$ACTOR_CHECKPOINT"

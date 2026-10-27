@@ -96,6 +96,26 @@ TensorDict:>=0.14.2,<0.15
 
 不要在服务器上使用“最新版本”替换这些固定版本。先复现固定环境；升级必须建立独立实验目录并重新做 Teacher 回归测试。
 
+### 3.1 不使用 Docker 的独立裸环境
+
+Docker 不是必须条件。如果共享服务器不授予 Docker 权限，可在仓库内建立完全独立环境：
+
+```bash
+OMNI_KIT_ACCEPT_EULA=YES bash scripts/setup_env.sh
+source scripts/activate_local.sh
+```
+
+脚本固定安装 Isaac Sim `6.0.1.0`、Isaac Lab `v3.0.0-beta2.patch1`、Python 3.12、Torch 2.10 和项目依赖。`.venv`、第三方源码、缓存、权重与输出均位于当前仓库，不改服务器已有 Isaac 环境，也不升级驱动。
+
+裸运行时必须在每次启动前选择当前空闲的物理 GPU，例如：
+
+```bash
+PICKPLACE_PHYSICAL_GPU=7 \
+  scripts/run_jaka_visual_collection_server.sh moving_sphere_static_bowl smoke
+```
+
+这里的 `7` 是宿主机 `nvidia-smi` 中的物理编号。下一次运行可以根据负载换成其他编号。
+
 ## 4. 权重传输
 
 `artifacts/` 被 `.gitignore` 排除，服务器 `git clone` 后不会自动获得三个 checkpoint。必须按第 2 节的相对路径复制，并在服务器执行：
