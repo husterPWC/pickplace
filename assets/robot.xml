@@ -1,0 +1,286 @@
+<mujoco model="empty_floor">
+  <compiler angle="radian" />
+
+  <option timestep="0.001" gravity="0 0 -9.81" integrator="implicitfast" impratio="1">
+      <flag contact="enable" energy="enable" gravity="enable" />
+  </option>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1" />
+    <global azimuth="120" elevation="-20" />
+  </visual>
+
+  <asset>
+    <mesh name="table" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/scenes/../objects/table/table.STL" scale="1.0 1.0 0.66" />
+
+    <texture type="skybox" builtin="gradient" rgb1="0.68 0.68 0.68" rgb2="0.3 0.3 0.3" width="512" height="3072" />
+    <texture name="groundplane" type="2d" builtin="checker" mark="edge" rgb1="0.68 0.68 0.68" rgb2="0.8 0.8 0.8" markrgb="0.68 0.68 0.68" width="300" height="300" />
+    <material name="groundplane" reflectance="0.5" shininess="0.0" specular="0.0" texrepeat="5 5" texture="groundplane" texuniform="true" />
+
+    <texture name="wood" type="2d" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/commons/../assets/textures/light-aluminum.png" />
+    <material name="wood" texture="wood" texrepeat="1 1" texuniform="true" rgba="0.68 0.68 0.68 1" />
+  <mesh name="0_Link_0" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/manipulators/Zu5/Link_0.STL" />
+        <mesh name="0_Link_1" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/manipulators/Zu5/Link_1.STL" />
+        <mesh name="0_Link_2" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/manipulators/Zu5/Link_2.STL" />
+        <mesh name="0_Link_3" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/manipulators/Zu5/Link_3.STL" />
+        <mesh name="0_Link_4" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/manipulators/Zu5/Link_4.STL" />
+        <mesh name="0_Link_5" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/manipulators/Zu5/Link_5.STL" />
+        <mesh name="0_Link_6" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/manipulators/Zu5/Link_6.STL" />
+    <material name="grey" specular="0.5" shininess="0.25" rgba="0.51764705882 0.53764705882 0.54764705882 1" />
+      <material name="black" specular="0.5" shininess="0.25" rgba="0.1 0.1 0.1 1" />
+
+      <mesh name="0_base_link" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/grippers/Ag95Gripper/meshes/base_link.stl" scale="0.001 0.001 0.001" />
+      <mesh name="0_gripper_body" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/grippers/Ag95Gripper/meshes/gripper_body.stl" scale="0.001 0.001 0.001" />
+      <mesh name="0_outer_knuckle" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/grippers/Ag95Gripper/meshes/outer_knuckle.stl" scale="0.001 0.001 0.001" />
+      <mesh name="0_inner_knuckle" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/grippers/Ag95Gripper/meshes/inner_knuckle.stl" scale="0.001 0.001 0.001" />
+      <mesh name="0_finger" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/grippers/Ag95Gripper/meshes/finger.stl" scale="0.001 0.001 0.001" />
+      <mesh name="0_finger_pad_0" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/grippers/Ag95Gripper/meshes/finger_pad_0.stl" scale="1 1 1" />
+      <mesh name="0_finger_pad_1" file="/home/pwc/RoboCode/IL_CODE/Simulation_Mujoco/robopal/assets/models/grippers/Ag95Gripper/meshes/finger_pad_1.stl" scale="1 1 1" />
+    <mesh name="peg_board_mesh" file="objects/peg_board/Empty_Link.STL" scale="1 1 1" />
+    <mesh name="peg1_mesh" file="objects/peg_board/peg1_link.STL" scale="1 1 1" />
+    <mesh name="peg2_mesh" file="objects/peg_board/peg2_link.STL" scale="1 1 1" />
+    <mesh name="peg3_mesh" file="objects/peg_board/peg3_link.STL" scale="1 1 1" />
+    <mesh name="peg4_mesh" file="objects/peg_board/peg4_link.STL" scale="1 1 1" />
+    <mesh name="peg5_mesh" file="objects/peg_board/peg5_link.STL" scale="1 1 1" />
+    <mesh name="peg6_mesh" file="objects/peg_board/peg6_link.STL" scale="1 1 1" />
+    <mesh name="peg7_mesh" file="objects/peg_board/peg7_link.STL" scale="1 1 1" />
+    <mesh name="peg8_mesh" file="objects/peg_board/peg8_link.STL" scale="1 1 1" />
+    <mesh name="peg9_mesh" file="objects/peg_board/peg9_link.STL" scale="1 1 1" />
+    </asset>
+
+  <worldbody>
+
+    <geom condim="3" material="groundplane" name="floor" pos="0 0 0" size="3 3 .125" type="plane" />
+    <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="1 1 8.0" specular="0.3 0.3 0.3" castshadow="false" />
+    <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="-3. -3. 8.0" specular="0.3 0.3 0.3" castshadow="false" />
+
+    <camera mode="fixed" name="frontview" pos="1.3 0 0.9" quat="0.56 0.43 0.43 0.56" />
+
+    <camera mode="fixed" name="birdview" pos="-0.2 0 3.0" quat="0.7071 0 0 0.7071" />
+
+    <camera mode="fixed" name="agentview" pos="0.5 0 1.35" quat="0.653 0.271 0.271 0.653" />
+
+    <camera mode="fixed" name="sideview" pos="-0.05651774593317116 1.2761224129427358 1.4879572214102434" quat="0.009905065491771751 0.006877963156909582 0.5912228352893879 0.806418094001364" />
+
+    <body name="table" pos="1.0 0.3 0.0">
+        <include file="objects/table/table.xml" />
+    </body>
+
+  <body name="0_mount_base_link" pos="0 0 0.42">
+        <body name="0_Link_0" pos="0.40 0.20 0.0">
+            <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_0" />
+            <geom type="mesh" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_0" />
+            <body name="0_Link_1" pos="0 0 0.12015">
+                <inertial pos="-2.5186e-07 0.0033226 -0.001509" quat="1 0.00056994 2.2456e-05 6.30952e-05" mass="3.78375" diaginertia="0.044302 0.043091 0.030523" />
+                <joint name="0_joint_1" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28 6.28" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_1" />
+                <geom type="mesh" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_1" />
+                <body name="0_Link_2" pos="0 0 0" quat="0.707105 0.707108 0 0">
+                    <inertial pos="0.215 6.4325e-09 -0.14315" quat="0.5 0.5 0.5 0.5" mass="11.46175" diaginertia="1.5964 1.5689 0.10377" />
+                    <joint name="0_joint_2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.48 4.62" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_2" />
+                    <geom type="mesh" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_2" />
+                    <body name="0_Link_3" pos="0.43 0 0">
+                        <inertial pos="0.19087 -1.1862e-05 -0.010587" quat="0.514252 0.485324 0.485304 0.514282" mass="4.51725" diaginertia="0.41632 0.412021 0.0207552" />
+                        <joint name="0_joint_3" pos="0 0 0" axis="0 0 1" limited="true" range="-3.05 3.05" />
+                        <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_3" />
+                        <geom type="mesh" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_3" />
+                        <body name="0_Link_4" pos="0.3685 -1.185e-05 -0.114">
+                            <inertial pos="-2.1345e-06 -0.0058004 0.0026717" quat="0.699182 0.714944 2.86648e-05 -8.42093e-06" mass="1.388" diaginertia="0.0092564 0.00897016 0.00522324" />
+                            <joint name="0_joint_4" pos="0 0 0" axis="0 0 1" limited="true" range="-1.48 4.62" />
+                            <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_4" />
+                            <geom type="mesh" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_4" />
+                            <body name="0_Link_5" pos="0 -0.1135 0" quat="0.707105 0.707108 0 0">
+                                <inertial pos="-2.0304e-06 -0.0028889 -0.0023424" quat="0.709446 0.70476 -1.15346e-05 9.23912e-07" mass="1.583475" diaginertia="0.012993 0.0127003 0.0058451" />
+                                <joint name="0_joint_5" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28 6.28" />
+                                <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_5" />
+                                <geom type="mesh" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_5" />
+                                <body name="0_Link_6" pos="0 0.107 0" quat="0.707105 -0.707108 0 0">
+                                    <inertial pos="2.7652e-05 -1.3485e-05 -0.021245" quat="-0.0453216 0.705107 0.0468242 0.7061" mass="0.3425" diaginertia="0.0011337 0.00072384 0.000718438" />
+                                    <joint name="0_joint_6" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28 6.28" />
+                                    <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_6" />
+                                    <geom type="mesh" rgba="0.84706 0.84706 0.84706 1" mesh="0_Link_6" />
+                                    <body name="0_attachment" pos="0 0 0" quat="0 0 0 1">
+                                        <site name="0_attachment_site" pos="0 0 0" quat="1 0 0 0" />
+
+                                    <body name="0_base">
+          <geom class="collision" mesh="0_base_link" />
+          <geom class="visual" mesh="0_base_link" material="grey" />
+          <geom class="collision" mesh="0_gripper_body" />
+          <geom class="visual" mesh="0_gripper_body" material="black" />
+        </body>
+
+        <body name="0_eef" pos="0 0 0.2" quat="0 1 0 0">
+          <site name="0_grip_site" pos="0 0 0" size="0.001" rgba="0 0 1 0" type="sphere" group="1" />
+
+
+
+
+
+
+      <body name="wrist_cam_mount" pos="0 -0.02 0.10">
+            <camera name="wrist_cam" pos="0 0 0" xyaxes="1 0 0 0 1 0" mode="fixed" fovy="60" />
+        </body>
+    </body>
+
+        <body name="0_left_inner_knuckle" pos="0.016 -0.0254 0.10586" quat="0.922844 0 0.385173 0">
+          <joint name="0_left_inner_knuckle_joint" pos="0 0 0" axis="0 -1 0" />
+
+          <geom class="collision" pos="-0.016 0.0254 -0.10586" mesh="0_inner_knuckle" />
+          <geom class="visual" pos="-0.016 0.0254 -0.10586" mesh="0_inner_knuckle" material="black" />
+
+        </body>
+        <body name="0_left_outer_knuckle" pos="0.036673 -0.00875 0.098336" quat="0.924908 0 -0.380191 0">
+          <joint name="0_left_outer_knuckle_joint" pos="0 0 0" axis="0 -1 0" damping="0.1" frictionloss="0.01" />
+
+          <geom class="collision" pos="-0.036673 0.00875 -0.098336" mesh="0_outer_knuckle" />
+          <geom class="visual" pos="-0.036673 0.00875 -0.098336" mesh="0_outer_knuckle" material="black" />
+
+          <body name="0_left_finger" pos="0.055 0 0" quat="0.924908 0 0.380191 0">
+            <joint name="0_left_finger_joint" pos="0 0 0" axis="0 1 0" />
+
+
+            <geom class="collision" pos="-0.091673 0.00875 -0.098336" mesh="0_finger" />
+            <geom class="visual" pos="-0.091673 0.00875 -0.098336" mesh="0_finger" material="black" />
+
+            <geom class="pad_box_0" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_0" />
+            <geom class="visual" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_0" material="grey" />
+            <geom class="pad_box_1" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_1" />
+            <geom class="visual" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_1" material="grey" />
+
+            <geom pos="-0.028 0 0.02" class="sphere_collision" />
+            <geom pos="-0.028 0.0175 0.02" class="sphere_collision" />
+            <geom pos="-0.028 0 0.032" class="sphere_collision" />
+            <geom pos="-0.028 0.0175 0.032" class="sphere_collision" />
+            <geom pos="-0.028 0 0.044" class="sphere_collision" />
+            <geom pos="-0.028 0.0175 0.044" class="sphere_collision" />
+
+          </body>
+        </body>
+        <body name="0_right_inner_knuckle" pos="-0.016 0.0254 0.10586" quat="0 0.385173 0 -0.922844">
+          <joint name="0_right_inner_knuckle_joint" pos="0 0 0" axis="0 -1 0" />
+
+          <geom class="collision" pos="-0.016 0.0254 -0.10586" mesh="0_inner_knuckle" />
+          <geom class="visual" pos="-0.016 0.0254 -0.10586" mesh="0_inner_knuckle" material="black" />
+        </body>
+        <body name="0_right_outer_knuckle" pos="-0.036673 0.00875 0.098336" quat="0 0.380191 0 0.924908">
+          <joint name="0_right_outer_knuckle_joint" pos="0 0 0" axis="0 -1 0" />
+          <geom class="collision" pos="-0.036673 0.00875 -0.098336" mesh="0_outer_knuckle" />
+          <geom class="visual" pos="-0.036673 0.00875 -0.098336" mesh="0_outer_knuckle" material="black" />
+
+          <body name="0_right_finger" pos="0.055 0 0" quat="0.924908 0 0.380191 0">
+            <joint name="0_right_finger_joint" pos="0 0 0" axis="0 1 0" />
+
+            <geom class="collision" pos="-0.091673 0.00875 -0.098336" mesh="0_finger" />
+            <geom class="visual" pos="-0.091673 0.00875 -0.098336" mesh="0_finger" material="black" />
+
+            <geom class="pad_box_0" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_0" />
+            <geom class="visual" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_0" material="grey" />
+            <geom class="pad_box_1" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_1" />
+            <geom class="visual" pos="-0.091673 0.00875 -0.098336" mesh="0_finger_pad_1" material="grey" />
+
+            <geom pos="-0.028 0 0.02" class="sphere_collision" />
+            <geom pos="-0.028 0.0175 0.02" class="sphere_collision" />
+            <geom pos="-0.028 0 0.032" class="sphere_collision" />
+            <geom pos="-0.028 0.0175 0.032" class="sphere_collision" />
+            <geom pos="-0.028 0 0.044" class="sphere_collision" />
+            <geom pos="-0.028 0.0175 0.044" class="sphere_collision" />
+
+          </body>
+        </body>
+    </body>
+                                </body>
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </body>
+    <body name="top_cam_mount" pos="0.4 0.1 1.8">
+            <camera name="topview" pos="0 0 0" xyaxes="1 0 0 0 1 0" mode="fixed" />
+        </body>
+    <body name="peg_board" pos="0.30 -0.30 0.42">
+            <geom name="peg_board_geom" type="mesh" mesh="peg_board_mesh" rgba="0.900 0.600 0.125 1" contype="0" conaffinity="0" group="1" />
+        </body>
+    <body name="peg1" pos="-0.04 -0.04 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg1:joint" type="free" />
+            <geom name="peg1_geom" type="mesh" mesh="peg1_mesh" rgba="0.839 0.153 0.157 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg2" pos="-0.06 0.11 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg2:joint" type="free" />
+            <geom name="peg2_geom" type="mesh" mesh="peg2_mesh" rgba="1.000 0.498 0.054 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg3" pos="-0.06 0.06 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg3:joint" type="free" />
+            <geom name="peg3_geom" type="mesh" mesh="peg3_mesh" rgba="0.2 0.820 0.933 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg4" pos="0.0 -0.05 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg4:joint" type="free" />
+            <geom name="peg4_geom" type="mesh" mesh="peg4_mesh" rgba="0.172 0.627 0.172 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg5" pos="0.0 0.01 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg5:joint" type="free" />
+            <geom name="peg5_geom" type="mesh" mesh="peg5_mesh" rgba="0.580 0.404 0.741 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg6" pos="0.0 0.11 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg6:joint" type="free" />
+            <geom name="peg6_geom" type="mesh" mesh="peg6_mesh" rgba="0.549 0.337 0.294 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg7" pos="0.1 -0.02 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg7:joint" type="free" />
+            <geom name="peg7_geom" type="mesh" mesh="peg7_mesh" rgba="0.890 0.467 0.761 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg8" pos="0.1 0.06 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg8:joint" type="free" />
+            <geom name="peg8_geom" type="mesh" mesh="peg8_mesh" rgba="0.737 0.741 0.133 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    <body name="peg9" pos="0.1 0.04 0.54" quat="0.7071 0.7071 0 0">
+            <joint name="peg9:joint" type="free" />
+            <geom name="peg9_geom" type="mesh" mesh="peg9_mesh" rgba="0.349 0.439 0.522 1" condim="6" friction="3.0 1.0 0.5" solimp="0.99 0.99 0.001" solref="0.001 1" />
+        </body>
+    </worldbody>
+<actuator><motor ctrllimited="true" ctrlrange="-150.0 150.0" joint="0_joint_1" name="0_actuator1" />
+        <motor ctrllimited="true" ctrlrange="-150.0 150.0" joint="0_joint_2" name="0_actuator2" />
+        <motor ctrllimited="true" ctrlrange="-150.0 150.0" joint="0_joint_3" name="0_actuator3" />
+        <motor ctrllimited="true" ctrlrange="-28.0 28.0" joint="0_joint_4" name="0_actuator4" />
+        <motor ctrllimited="true" ctrlrange="-28.0 28.0" joint="0_joint_5" name="0_actuator5" />
+        <motor ctrllimited="true" ctrlrange="-28.0 28.0" joint="0_joint_6" name="0_actuator6" />
+    <position name="0_fingers_actuator" tendon="0_split" forcerange="-100 100" ctrlrange="0 0.943" ctrllimited="true" kp="80" kv="10" />
+    </actuator><default><default class="ag95_gripper">
+          <joint range="0 0.943" />
+          <general dyntype="none" gaintype="fixed" biastype="affine" dynprm="1 0 0" gainprm="1 0 0" biasprm="0 -1 -0.01" forcerange="-100 100" ctrlrange="0 0.943" />
+            </default>
+
+      <default class="visual">
+        <geom group="2" type="mesh" contype="0" conaffinity="0" density="0" />
+      </default>
+      <default class="collision">
+        <geom group="3" type="mesh" density="2700" />
+
+        <default class="pad_box_0">
+          <geom solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.45 0.45 0.45 1" friction="2.5 1.0 0.5" condim="6" />
+        </default>
+        <default class="pad_box_1">
+          <geom solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.55 0.55 0.55 1" friction="2.5 1.0 0.5" condim="6" />
+        </default>
+
+        <default class="sphere_collision">
+          <geom type="sphere" size="0.0006" rgba="1 0 0 1" group="3" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" mass="1e-6" />
+        </default>
+
+      </default>
+    </default><contact><exclude body1="0_base" body2="0_left_inner_knuckle" />
+      <exclude body1="0_base" body2="0_left_outer_knuckle" />
+      <exclude body1="0_base" body2="0_right_inner_knuckle" />
+      <exclude body1="0_base" body2="0_right_outer_knuckle" />
+      <exclude body1="0_left_inner_knuckle" body2="0_left_finger" />
+      <exclude body1="0_right_inner_knuckle" body2="0_right_finger" />
+    </contact><sensor /><equality><connect anchor="-0.020673 0 0.007524" body1="0_left_finger" body2="0_left_inner_knuckle" solimp="0.95 0.99 0.001" solref="0.005 1" />
+      <connect anchor="-0.020673 0 0.007524" body1="0_right_finger" body2="0_right_inner_knuckle" solimp="0.95 0.99 0.001" solref="0.005 1" />
+      <joint joint1="0_left_outer_knuckle_joint" joint2="0_right_outer_knuckle_joint" polycoef="0 1 0 0 0" solimp="0.95 0.99 0.001" solref="0.005 1" />
+    </equality><tendon><fixed name="0_split">
+        <joint joint="0_left_outer_knuckle_joint" coef="0.5" />
+        <joint joint="0_right_outer_knuckle_joint" coef="0.5" />
+      </fixed>
+    </tendon></mujoco>
