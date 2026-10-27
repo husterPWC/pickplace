@@ -74,13 +74,15 @@ scripts/check_jaka_visual_server.sh
 ./docker/run.sh python scripts/verify_install.py
 ```
 
-在共享八卡服务器上必须显式限制可见 GPU。例如 GPU7 空闲时使用：
+在共享八卡服务器上不固定某张 GPU。每次启动前先用 `nvidia-smi` 查看当前显存、利用率和已有进程，选择当时充裕的物理卡，再显式限制该次容器的可见 GPU。例如当次选择 GPU7 时使用：
 
 ```bash
 FOOD_ROBOT_GPUS=device=7 ./docker/run.sh python scripts/verify_install.py
 ```
 
-容器内显示的 `cuda:0` 此时映射到物理 GPU7；不要同时再传物理编号 `7` 给容器内程序。后续所有 Isaac 采集命令都沿用同一个 `FOOD_ROBOT_GPUS=device=7` 前缀。
+容器内显示的 `cuda:0` 此时映射到物理 GPU7；不要同时再传物理编号 `7` 给容器内程序。下一次运行可以重新检查并改成 `device=1`、`device=4` 等其他空闲卡。
+
+单个 Isaac 采集进程默认使用一张物理 GPU。需要利用多张空闲卡时，为每张卡分别启动独立容器，并为每个进程设置不同的 `seed`、`JAKA_VISUAL_NAME` 和输出目录；不得让多个进程并发写同一个 shard。
 
 固定基线来自当前仓库：
 
